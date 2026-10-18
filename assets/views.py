@@ -1,6 +1,7 @@
 import uuid
 from collections.abc import Callable
 
+from django.conf import settings
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import APIException
@@ -58,6 +59,18 @@ class UploadViewSet(OwnedPhotoMixin, viewsets.GenericViewSet):
         target = _call(services.upload_target, photo)
         return Response(
             {"photo": PhotoSerializer(photo).data, "upload": target}, status=status_code
+        )
+
+    @action(detail=False, methods=["get"])
+    def config(self, request: Request) -> Response:
+        """Limits the dashboard checks before uploading, so bad files fail instantly."""
+        uploads = settings.UPLOADS
+        return Response(
+            {
+                "allowed_content_types": uploads["ALLOWED_CONTENT_TYPES"],
+                "max_file_bytes": uploads["MAX_FILE_BYTES"],
+                "max_parts_per_sign_request": uploads["MAX_PARTS_PER_SIGN_REQUEST"],
+            }
         )
 
     def create(self, request: Request) -> Response:

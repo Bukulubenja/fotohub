@@ -1,0 +1,70 @@
+import { apiRequest } from './client'
+import type {
+  Gallery,
+  Me,
+  Page,
+  Photo,
+  PhotoStatus,
+  StartedUpload,
+  StorageUsage,
+  UploadConfig,
+  UploadedPart,
+} from './types'
+
+export const auth = {
+  me: () => apiRequest<Me>('GET', '/me/'),
+  login: (email: string, password: string) =>
+    apiRequest<Me>('POST', '/auth/login/', { email, password }),
+  logout: () => apiRequest<void>('POST', '/auth/logout/'),
+}
+
+export const galleries = {
+  // First page is enough for the picker until galleries get their own search.
+  list: () => apiRequest<Page<Gallery>>('GET', '/galleries/'),
+}
+
+export const photos = {
+  count: async (gallery: string, status: PhotoStatus) => {
+    const params = new URLSearchParams({ gallery, status })
+    return (await apiRequest<Page<Photo>>('GET', `/photos/?${params}`)).count
+  },
+}
+
+export const storage = {
+  usage: () => apiRequest<StorageUsage>('GET', '/storage/usage/'),
+}
+
+export interface StartUploadInput {
+  gallery: string
+  filename: string
+  contentType: string
+  size: number
+}
+
+/** The upload endpoints the queue depends on; swapped for fakes in tests. */
+export interface UploadApi {
+  start(input: StartUploadInput): Promise<StartedUpload>
+  resume(photoId: string): Promise<StartedUpload>
+  signParts(photoId: string, partNumbers: number[]): Promise<Record<string, string>>
+  listParts(photoId: string): Promise<UploadedPart[]>
+  complete(photoId: string): Promise<Photo>
+  abort(photoId: string): Promise<void>
+}
+
+export const uploadApi: UploadApi = {
+  start: ({ gallery, filename, contentType, size }) =>
+    apiRequest('POST', '/uploads/', { gallery, filename, content_type: contentType, size }),
+  resume: (photoId) => apiRequest('GET', `/uploads/${photoId}/`),
+  signParts: async (photoId, partNumbers) =>
+    (
+      await apiRequest<{ urls: Record<string, string> }>('POST', `/uploads/${photoId}/sign-parts/`, {
+        part_numbers: partNumbers,
+      })
+    ).urls,
+  listParts: async (photoId) =>
+    (await apiRequest<{ parts: UploadedPart[] }>('GET', `/uploads/${photoId}/parts/`)).parts,
+  complete: (photoId) => apiRequest('POST', `/uploads/${photoId}/complete/`),
+  abort: (photoId) => apiRequest('DELETE', `/uploads/${photoId}/`),
+}
+
+export const uploadConfig = () => apiRequest<UploadConfig>('GET', '/uploads/config/')

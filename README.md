@@ -17,6 +17,24 @@ cp .env.example .env
 
 Local development uses SQLite. Production uses PostgreSQL through `DATABASE_URL`.
 
+## Photographer dashboard (`frontend/`)
+
+React + TypeScript (Vite). In development it proxies `/api` to Django, so the session cookie
+and CSRF work without CORS. Needs Node 20.19+ (CI uses Node 24 / npm 11; npm 10.8 has a
+resolver bug with this dependency tree, so use `npx npm@11 install` there).
+
+```bash
+cd frontend
+npm install
+npm run dev          # http://localhost:5173, with Django on :8000
+npm test && npm run typecheck && npm run lint && npm run build
+```
+
+`src/upload/queue.ts` is the upload engine: 3 files at a time, per-file retries with backoff,
+resume from the parts already in the bucket, and a retry that reuses the existing server
+session so quota isn't reserved twice. Uppy isn't used: v6 drives S3 itself and wants the
+server to sign arbitrary requests, which conflicts with the server-owned lifecycle above.
+
 ## Checks
 
 ```bash
@@ -31,6 +49,7 @@ Local development uses SQLite. Production uses PostgreSQL through `DATABASE_URL`
 | `config/` | Settings split into `base`, `dev`, `test` and `prod` |
 | `accounts/` | Email-login `User`, `PhotographerProfile`, session auth API |
 | `galleries/` | `Event`, `Gallery`, state transitions (`services.py`), customer access policy (`access.py`) |
+| `frontend/` | Photographer dashboard: sign-in, gallery picker, upload manager |
 | `assets/` | `Photo`, `UploadSession`, quota reservation and upload lifecycle (`services.py`), R2 client (`storage.py`), pyvips variants (`processing.py`, Celery `tasks.py`) |
 
 Planned apps: `delivery` (downloads/ZIP), `billing`, `audit`.
@@ -53,6 +72,7 @@ Planned apps: `delivery` (downloads/ZIP), `billing`, `audit`.
 | GET | `/api/v1/uploads/{id}/parts/` | Parts already in the bucket, so a resumed upload skips them |
 | POST | `/api/v1/uploads/{id}/complete/` | Idempotent. Verifies the stored size, then queues processing |
 | DELETE | `/api/v1/uploads/{id}/` | Abort an unfinished upload and release its quota |
+| GET | `/api/v1/uploads/config/` | Allowed types and size limits, checked client-side before uploading |
 | GET/DELETE | `/api/v1/photos/` | `?gallery=<id>&status=failed` for the dashboard's retry list |
 | GET | `/api/v1/storage/usage/` | `used_bytes`, `quota_bytes`, `percent`, `warning_level` (75/90/100) |
 
@@ -73,8 +93,8 @@ celery -A config beat
 
 Bucket setup (once per environment):
 
-- **CORS**: allow `PUT` from the dashboard origin and expose the `ETag` header (Uppy needs it
-  for multipart).
+- **CORS**: allow `PUT` with the `Content-Type` header from the dashboard origin. No headers
+  need exposing: the server assembles multipart uploads from the bucket's own part list.
 - **Lifecycle rule**: abort incomplete multipart uploads after 1 day. This catches parts left
   behind when a gallery is deleted mid-upload.
 - Keep the bucket private. Nothing is served without a signed URL.

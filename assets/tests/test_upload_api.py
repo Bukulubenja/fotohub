@@ -100,6 +100,14 @@ class TestStartUpload:
         assert start(api_client, gallery, size=10).status_code == 403
 
 
+def test_config_exposes_client_side_limits(auth_client, settings):
+    response = auth_client.get(reverse("upload-config"))
+
+    assert response.status_code == 200
+    assert response.data["max_file_bytes"] == settings.UPLOADS["MAX_FILE_BYTES"]
+    assert "image/jpeg" in response.data["allowed_content_types"]
+
+
 class TestQuota:
     def test_rejects_upload_that_would_exceed_quota(
         self, auth_client, photographer, gallery, storage
