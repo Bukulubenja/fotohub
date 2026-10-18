@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.core.validators import RegexValidator
 from django.db import models
@@ -43,11 +44,17 @@ class User(AbstractUser):
 hex_color = RegexValidator(r"^#[0-9A-Fa-f]{6}$", "Use a hex colour such as #172033.")
 
 
+def default_storage_quota() -> int:
+    return settings.DEFAULT_STORAGE_QUOTA_BYTES
+
+
 class PhotographerProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
     display_name = models.CharField(max_length=120)
     contact_phone = models.CharField(max_length=32, blank=True)
     brand_color = models.CharField(max_length=7, default="#172033", validators=[hex_color])
+    # Set from the subscription plan once billing exists (phase 4).
+    storage_quota_bytes = models.PositiveBigIntegerField(default=default_storage_quota)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -21,6 +21,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "accounts",
     "galleries",
+    "assets",
 ]
 
 MIDDLEWARE = [
@@ -98,6 +99,8 @@ REST_FRAMEWORK = {
         "gallery_unlock": "10/min",
         # Across all clients, so rotating IPs doesn't multiply password guesses.
         "gallery_unlock_global": "60/hour",
+        # create + sign + complete per file; a 1,000-photo event stays well under this.
+        "uploads": "1200/min",
     },
     # Trusted reverse proxies in front of the app. With 0, X-Forwarded-For is ignored
     # and throttles key on REMOTE_ADDR, so clients can't spoof their identity.
@@ -111,3 +114,45 @@ ADMIN_URL = env("DJANGO_ADMIN_URL", default="admin/")
 
 # Public gallery tokens: 32 random bytes, URL-safe (~43 chars).
 GALLERY_TOKEN_BYTES = 32
+
+MIB = 1024 * 1024
+GIB = 1024 * MIB
+
+# Private S3-compatible object storage (Cloudflare R2 in production).
+OBJECT_STORAGE = {
+    "BUCKET": env("STORAGE_BUCKET", default="fotohub-dev"),
+    "ENDPOINT_URL": env("STORAGE_ENDPOINT_URL", default=None),
+    "REGION": env("STORAGE_REGION", default="auto"),
+    "ACCESS_KEY_ID": env("STORAGE_ACCESS_KEY_ID", default=None),
+    "SECRET_ACCESS_KEY": env("STORAGE_SECRET_ACCESS_KEY", default=None),
+}
+
+UPLOADS = {
+    "ALLOWED_CONTENT_TYPES": ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"],
+    "MAX_FILE_BYTES": 100 * MIB,
+    "MULTIPART_THRESHOLD_BYTES": 32 * MIB,
+    "PART_SIZE_BYTES": 8 * MIB,  # S3 minimum is 5 MiB
+    "MAX_PARTS_PER_SIGN_REQUEST": 100,
+    "URL_TTL_SECONDS": 60 * 60,
+    "SESSION_TTL_SECONDS": 24 * 60 * 60,  # unfinished uploads stop reserving quota after this
+    "MAX_PIXELS": 120_000_000,  # decompression-bomb guard (~120 MP)
+    "MAX_ACTIVE_UPLOADS": 500,  # per photographer
+}
+
+DEFAULT_STORAGE_QUOTA_BYTES = env.int("DEFAULT_STORAGE_QUOTA_BYTES", default=5 * GIB)
+STORAGE_WARNING_THRESHOLDS = [75, 90, 100]  # percent, spec FR-28
+
+CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="redis://localhost:6379/0")
+CELERY_TASK_ACKS_LATE = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1  # image jobs are heavy; take one at a time
+CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER", default=False)
+CELERY_BEAT_SCHEDULE = {
+    "expire-stale-uploads": {
+        "task": "assets.tasks.expire_stale_uploads",
+        "schedule": 15 * 60,
+    },
+    "requeue-stuck-photos": {
+        "task": "assets.tasks.requeue_stuck_photos",
+        "schedule": 10 * 60,
+    },
+}

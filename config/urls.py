@@ -6,4 +6,5 @@ urlpatterns = [
     path(settings.ADMIN_URL, admin.site.urls),
     path("api/v1/", include("accounts.urls")),
     path("api/v1/", include("galleries.urls")),
+    path("api/v1/", include("assets.urls")),
 ]

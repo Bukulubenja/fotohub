@@ -1,0 +1,137 @@
+"""Private S3-compatible object storage (Cloudflare R2 in production).
+
+The only module that talks to the bucket. Browsers never receive credentials, just
+short-lived presigned URLs for one object or one multipart part.
+"""
+
+from functools import lru_cache
+
+import boto3
+from botocore.config import Config
+from botocore.exceptions import ClientError
+from django.conf import settings
+
+MISSING_CODES = {"404", "NoSuchKey", "NotFound"}
+
+
+class StorageError(Exception):
+    pass
+
+
+class ObjectStorage:
+    def __init__(self, conf: dict) -> None:
+        self.bucket = conf["BUCKET"]
+        self.client = boto3.client(
+            "s3",
+            endpoint_url=conf["ENDPOINT_URL"],
+            region_name=conf["REGION"],
+            aws_access_key_id=conf["ACCESS_KEY_ID"],
+            aws_secret_access_key=conf["SECRET_ACCESS_KEY"],
+            config=Config(
+                signature_version="s3v4",
+                retries={"max_attempts": 5, "mode": "adaptive"},  # R2 sheds load with 5xx
+            ),
+        )
+
+    @property
+    def url_ttl(self) -> int:
+        return settings.UPLOADS["URL_TTL_SECONDS"]
+
+    def presign_put(self, key: str, content_type: str, size_bytes: int) -> str:
+        return self.client.generate_presigned_url(
+            "put_object",
+            Params={
+                "Bucket": self.bucket,
+                "Key": key,
+                "ContentType": content_type,
+                "ContentLength": size_bytes,
+            },
+            ExpiresIn=self.url_ttl,
+        )
+
+    def presign_get(self, key: str) -> str:
+        return self.client.generate_presigned_url(
+            "get_object", Params={"Bucket": self.bucket, "Key": key}, ExpiresIn=self.url_ttl
+        )
+
+    def create_multipart(self, key: str, content_type: str) -> str:
+        response = self.client.create_multipart_upload(
+            Bucket=self.bucket, Key=key, ContentType=content_type
+        )
+        return response["UploadId"]
+
+    def presign_part(self, key: str, upload_id: str, part_number: int) -> str:
+        return self.client.generate_presigned_url(
+            "upload_part",
+            Params={
+                "Bucket": self.bucket,
+                "Key": key,
+                "UploadId": upload_id,
+                "PartNumber": part_number,
+            },
+            ExpiresIn=self.url_ttl,
+        )
+
+    def list_parts(self, key: str, upload_id: str) -> list[dict]:
+        paginator = self.client.get_paginator("list_parts")
+        parts = []
+        for page in paginator.paginate(Bucket=self.bucket, Key=key, UploadId=upload_id):
+            parts += [
+                {"PartNumber": p["PartNumber"], "ETag": p["ETag"], "Size": p["Size"]}
+                for p in page.get("Parts", [])
+            ]
+        return parts
+
+    def complete_multipart(self, key: str, upload_id: str) -> None:
+        """Assemble from the parts the bucket holds, not from what the client claims."""
+        parts = self.list_parts(key, upload_id)
+        if not parts:
+            raise StorageError("No parts have been uploaded yet.")
+        self.client.complete_multipart_upload(
+            Bucket=self.bucket,
+            Key=key,
+            UploadId=upload_id,
+            MultipartUpload={
+                "Parts": [{"PartNumber": p["PartNumber"], "ETag": p["ETag"]} for p in parts]
+            },
+        )
+
+    def abort_multipart(self, key: str, upload_id: str) -> None:
+        try:
+            self.client.abort_multipart_upload(Bucket=self.bucket, Key=key, UploadId=upload_id)
+        except ClientError as exc:
+            if exc.response["Error"]["Code"] != "NoSuchUpload":
+                raise
+
+    def object_size(self, key: str) -> int | None:
+        try:
+            return self.client.head_object(Bucket=self.bucket, Key=key)["ContentLength"]
+        except ClientError as exc:
+            if exc.response["Error"]["Code"] in MISSING_CODES:
+                return None
+            raise
+
+    def download_to(self, key: str, path: str) -> None:
+        self.client.download_file(self.bucket, key, path)
+
+    def put_bytes(self, key: str, data: bytes, content_type: str) -> None:
+        self.client.put_object(
+            Bucket=self.bucket,
+            Key=key,
+            Body=data,
+            ContentType=content_type,
+            CacheControl="private, max-age=31536000, immutable",  # keys never change content
+        )
+
+    def delete(self, keys: list[str]) -> None:
+        for start in range(0, len(keys), 1000):  # DeleteObjects limit
+            batch = keys[start : start + 1000]
+            self.client.delete_objects(
+                Bucket=self.bucket,
+                Delete={"Objects": [{"Key": key} for key in batch], "Quiet": True},
+            )
+
+
+@lru_cache(maxsize=1)
+def get_storage() -> ObjectStorage:
+    return ObjectStorage(settings.OBJECT_STORAGE)

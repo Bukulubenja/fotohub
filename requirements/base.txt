@@ -2,3 +2,8 @@ Django>=6.0,<6.2
 djangorestframework>=3.16,<4
 django-environ>=0.12,<1
 argon2-cffi>=23.1
+boto3>=1.35
+celery[redis]>=5.4,<6
+pyvips>=3.0
+# Bundles libvips for Windows/macOS/Linux wheels; on servers you may use the distro libvips instead.
+pyvips-binary>=8.16

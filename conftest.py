@@ -12,7 +12,12 @@ def strict_throttle(monkeypatch):
     monkeypatch.setattr(
         SimpleRateThrottle,
         "THROTTLE_RATES",
-        {"auth": "2/min", "gallery_unlock": "2/min", "gallery_unlock_global": "3/min"},
+        {
+            "auth": "2/min",
+            "gallery_unlock": "2/min",
+            "gallery_unlock_global": "3/min",
+            "uploads": "2/min",
+        },
     )
     cache.clear()
     yield

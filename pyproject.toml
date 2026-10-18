@@ -4,7 +4,7 @@ python_files = ["test_*.py"]
 addopts = "-q --strict-markers"
 
 [tool.coverage.run]
-source = ["accounts", "galleries"]
+source = ["accounts", "galleries", "assets"]
 omit = ["*/migrations/*", "*/tests/*"]
 
 [tool.ruff]
