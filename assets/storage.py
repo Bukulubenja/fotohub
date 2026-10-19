@@ -12,6 +12,7 @@ from botocore.exceptions import ClientError
 from django.conf import settings
 
 MISSING_CODES = {"404", "NoSuchKey", "NotFound"}
+NO_CONFIG_CODES = {"NoSuchCORSConfiguration", "NoSuchLifecycleConfiguration"}
 
 
 class StorageError(Exception):
@@ -121,6 +122,36 @@ class ObjectStorage:
             Body=data,
             ContentType=content_type,
             CacheControl="private, max-age=31536000, immutable",  # keys never change content
+        )
+
+    # Bucket setup, used by `manage.py storage_check`. R2 tokens scoped to "Object Read &
+    # Write" can't call these; they raise ClientError(AccessDenied) and the check says so.
+
+    def head_bucket(self) -> None:
+        self.client.head_bucket(Bucket=self.bucket)
+
+    def cors_rules(self) -> list[dict]:
+        try:
+            return self.client.get_bucket_cors(Bucket=self.bucket)["CORSRules"]
+        except ClientError as exc:
+            if exc.response["Error"]["Code"] in NO_CONFIG_CODES:
+                return []
+            raise
+
+    def put_cors_rules(self, rules: list[dict]) -> None:
+        self.client.put_bucket_cors(Bucket=self.bucket, CORSConfiguration={"CORSRules": rules})
+
+    def lifecycle_rules(self) -> list[dict]:
+        try:
+            return self.client.get_bucket_lifecycle_configuration(Bucket=self.bucket)["Rules"]
+        except ClientError as exc:
+            if exc.response["Error"]["Code"] in NO_CONFIG_CODES:
+                return []
+            raise
+
+    def put_lifecycle_rules(self, rules: list[dict]) -> None:
+        self.client.put_bucket_lifecycle_configuration(
+            Bucket=self.bucket, LifecycleConfiguration={"Rules": rules}
         )
 
     def delete(self, keys: list[str]) -> None:

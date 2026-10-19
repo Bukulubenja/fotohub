@@ -3,5 +3,5 @@ pytest>=8
 pytest-django>=4.9
 pytest-cov>=5
 factory-boy>=3.3
-moto[s3]>=5
+moto[s3,server]>=5  # server: real HTTP endpoint for presigned-URL tests
 ruff>=0.6

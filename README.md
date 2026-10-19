@@ -99,6 +99,62 @@ Bucket setup (once per environment):
   behind when a gallery is deleted mid-upload.
 - Keep the bucket private. Nothing is served without a signed URL.
 
+`manage.py storage_check` proves all of this over real HTTP with presigned URLs, as a browser
+would. It also proves that the bucket refuses a PUT whose size differs from the signed
+`Content-Length`; without that, uploads could bypass the quota.
+
+```bash
+.venv/Scripts/python manage.py storage_check --origin https://app.fotohub.ug          # check
+.venv/Scripts/python manage.py storage_check --origin https://app.fotohub.ug --apply  # + set CORS/lifecycle
+```
+
+`--apply` needs an R2 token with admin rights on the bucket. An "Object Read & Write" token
+gets `AccessDenied`; set the two rules in the R2 dashboard instead and rerun the check.
+
+## Phase 2 exit gate: the upload drill
+
+The gate: a 1,000-photo event uploads over a Kampala connection, with retries working.
+`scripts/upload_drill.py` drives the real API and bucket the way the dashboard does (3 files at
+once, the same 1/3/10/30 s retries, resume from stored parts), then presses "retry failed" once
+and waits for processing. It uses the standard library only; pyvips is needed just for
+`--synthetic`.
+
+1. **Bucket.** Create an R2 bucket and an API token, fill the `STORAGE_*` lines in `.env`, and
+   run `storage_check` until every line says `ok`. Use `--origin http://localhost:5173` locally.
+2. **Quota.** 1,000 photos at 3–8 MB need more than the default 5 GiB. Raise the drill
+   account's `storage_quota_bytes` in the admin. The drill refuses to start if it won't fit.
+3. **Worker** (optional for a first pass). Dev settings process photos inline. To test the real
+   queue, run Redis (Memurai or WSL on Windows), set `CELERY_TASK_ALWAYS_EAGER=False`, and start
+   `celery -A config worker --pool=solo` (the prefork pool doesn't run on Windows) plus `celery -A config beat`.
+4. **Rehearse small**, e.g. 50 photos with simulated trouble:
+
+   ```bash
+   .venv/Scripts/python scripts/upload_drill.py --base-url http://127.0.0.1:8000 \
+       --email drill@example.com --synthetic --photos 50 --drop-rate 0.05 --journal rehearsal.jsonl
+   ```
+
+5. **The real run**, from the Kampala connection, with your own event photos:
+
+   ```bash
+   .venv/Scripts/python scripts/upload_drill.py --base-url http://127.0.0.1:8000 \
+       --email drill@example.com --image-dir "D:/events/some-wedding" --photos 1000 \
+       --journal drill.jsonl --report drill-report.json
+   ```
+
+   Partway through, pull the network cable or switch off Wi-Fi for a minute, and kill the
+   script once (Ctrl+C or close the window). Rerun the same command and it resumes from the
+   journal: finished photos are skipped, and unfinished ones continue with their existing upload
+   sessions and parts.
+
+Use `127.0.0.1`, not `localhost`. On Windows, `localhost` tries IPv6 first and each request
+loses about 2 s. `--bandwidth-kbps` caps the link and `--drop-rate` cuts a share of transfers
+mid-body, for testing on a fast line. The run **passes** when it prints `PASS`: every file
+uploaded (after at most one retry pass) and every photo `ready`. Keep `drill-report.json`. It
+records throughput, p50/p95 seconds per file, how many files needed the manual retry pass, and
+any processing failures.
+
+The bytes really leave your connection: 1,000 photos at ~5 MB is about 5 GB of mobile data.
+
 ## Security rules this code relies on
 
 - Every owner query goes through `owned_by(user)`. Never use `Gallery.objects.get(pk=...)` in an owner view.
