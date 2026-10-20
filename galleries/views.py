@@ -44,7 +44,8 @@ class GalleryViewSet(viewsets.ModelViewSet):
     serializer_class = GallerySerializer
 
     def get_queryset(self):
-        return Gallery.objects.owned_by(self.request.user).select_related("event")
+        # The share message names the studio, so load the profile with the gallery.
+        return Gallery.objects.owned_by(self.request.user).select_related("event__owner__profile")
 
     def _transition(self, transition: Callable[[Gallery], Gallery]) -> Response:
         gallery = self.get_object()

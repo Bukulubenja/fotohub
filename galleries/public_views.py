@@ -26,7 +26,7 @@ from rest_framework.throttling import BaseThrottle, ScopedRateThrottle
 from assets.gallery_media import cover_image, download_url, gallery_photos, ready_photos
 from assets.models import Photo
 from delivery.services import estimate_bytes
-from galleries import access
+from galleries import access, sharing
 from galleries.models import Gallery
 from galleries.views import NOINDEX, GalleryUnlockThrottle
 
@@ -107,9 +107,7 @@ def base_context(request: HttpRequest, visit: Visit) -> dict:
         "profile": gallery.event.owner.profile,
         "is_preview": visit.is_preview,
         "is_expired": gallery.is_expired(),
-        "share_url": request.build_absolute_uri(
-            reverse("public-gallery-page", args=[gallery.public_token])
-        ),
+        "share_url": sharing.share_url(request, gallery),
     }
 
 
@@ -149,6 +147,13 @@ def gallery_page(request: HttpRequest, token: str) -> HttpResponse:
         # The share preview shows a photo only when anyone with the link may see it.
         context["cover"] = cover_image(gallery)
         context["share_cover"] = context["cover"] if not gallery.has_password else None
+        message = sharing.guest_message(gallery, context["share_url"])
+        context["share_data"] = {
+            "title": gallery.event.title,
+            "text": message,
+            "url": context["share_url"],
+        }
+        context["whatsapp_url"] = sharing.whatsapp_link(message)
         if context["can_download"] and paginator.count:
             context["archive_bytes"] = estimate_bytes(gallery)
             context["large_bytes"] = settings.DELIVERY["LARGE_DOWNLOAD_BYTES"]

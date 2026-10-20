@@ -3,6 +3,7 @@ import { auth, galleries as galleriesApi, photos, storage, uploadConfig } from '
 import type { Gallery, Me, StorageUsage, UploadConfig } from '../api/types'
 import { formatBytes, plural } from '../format'
 import { useUploadQueue } from '../upload/useUploadQueue'
+import { SharePanel } from './SharePanel'
 import { UploadPanel } from './UploadPanel'
 
 const UPLOADABLE = new Set(['draft', 'processing', 'published'])
@@ -63,6 +64,7 @@ function GalleryUploads({ gallery, config, onUploaded }: {
 
   return (
     <>
+      <SharePanel gallery={gallery} />
       <UploadPanel queue={queue} items={items} summary={summary} config={config} />
       {(counts.processing > 0 || counts.failed > 0) && (
         <p className="muted processing" role="status">

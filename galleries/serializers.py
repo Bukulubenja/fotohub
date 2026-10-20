@@ -2,6 +2,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from assets.models import Photo
+from galleries import sharing
 from galleries.models import Event, Gallery
 from galleries.services import update_gallery_settings
 
@@ -30,6 +31,8 @@ class GallerySerializer(serializers.ModelSerializer):
     cover_photo = serializers.PrimaryKeyRelatedField(
         queryset=Photo.objects.none(), required=False, allow_null=True
     )
+    share_url = serializers.SerializerMethodField()
+    share_message = serializers.SerializerMethodField()
 
     class Meta:
         model = Gallery
@@ -44,6 +47,8 @@ class GallerySerializer(serializers.ModelSerializer):
             "has_password",
             "expires_at",
             "cover_photo",
+            "share_url",
+            "share_message",
             "published_at",
             "created_at",
             "updated_at",
@@ -70,6 +75,12 @@ class GallerySerializer(serializers.ModelSerializer):
         if value is not None and not unchanged and value <= timezone.now():
             raise serializers.ValidationError("Expiry must be in the future.")
         return value
+
+    def get_share_url(self, gallery: Gallery) -> str:
+        return sharing.share_url(self.context["request"], gallery)
+
+    def get_share_message(self, gallery: Gallery) -> str:
+        return sharing.photographer_message(gallery, self.get_share_url(gallery))
 
     def validate(self, attrs: dict) -> dict:
         cover = attrs.get("cover_photo")

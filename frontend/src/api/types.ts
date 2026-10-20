@@ -14,6 +14,9 @@ export interface Gallery {
   event: string
   title: string
   status: GalleryStatus
+  /** Customer link, and a WhatsApp-ready message containing it (never the password). */
+  share_url: string
+  share_message: string
 }
 
 export type PhotoStatus = 'uploading' | 'processing' | 'ready' | 'failed'

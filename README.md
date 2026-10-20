@@ -52,7 +52,10 @@ server to sign arbitrary requests, which conflicts with the server-owned lifecyc
 | `frontend/` | Photographer dashboard: sign-in, gallery picker, upload manager |
 | `assets/` | `Photo`, `UploadSession`, quota reservation and upload lifecycle (`services.py`), R2 client (`storage.py`), pyvips variants (`processing.py`, Celery `tasks.py`) |
 
-Planned apps: `delivery` (downloads/ZIP), `billing`, `audit`.
+| `galleries/public_views.py` | Customer gallery at `/g/<token>/`: server-rendered page, password unlock, single downloads, owner preview |
+| `delivery/` | "Download all": shared `DownloadJob`s, ZIP streamed into R2 (`archive.py`), status page, expiry |
+
+Planned apps: `billing`, `audit`.
 
 ## API (v1)
 
@@ -62,7 +65,7 @@ Planned apps: `delivery` (downloads/ZIP), `billing`, `audit`.
 | POST | `/api/v1/auth/register/` · `/login/` · `/logout/` | Session auth, throttled |
 | GET/PATCH | `/api/v1/me/` | Photographer profile |
 | CRUD | `/api/v1/events/` | Scoped to the signed-in photographer |
-| CRUD | `/api/v1/galleries/` | Scoped through `event.owner` |
+| CRUD | `/api/v1/galleries/` | Scoped through `event.owner`. Read-only `share_url` and `share_message` (WhatsApp-ready, never contains the password); writable `cover_photo` (a ready photo of that gallery) |
 | POST | `/api/v1/galleries/{id}/publish/` · `/unpublish/` · `/rotate-token/` | 409 on invalid transition |
 | GET | `/api/v1/public/galleries/{token}/` | Customer metadata. Drafts and unknown tokens return 404, expired galleries 410 |
 | POST | `/api/v1/public/galleries/{token}/unlock/` | Gallery password, throttled, unlock stored in session |
@@ -75,6 +78,35 @@ Planned apps: `delivery` (downloads/ZIP), `billing`, `audit`.
 | GET | `/api/v1/uploads/config/` | Allowed types and size limits, checked client-side before uploading |
 | GET/DELETE | `/api/v1/photos/` | `?gallery=<id>&status=failed` for the dashboard's retry list |
 | GET | `/api/v1/storage/usage/` | `used_bytes`, `quota_bytes`, `percent`, `warning_level` (75/90/100) |
+
+## Customer gallery (`/g/<token>/`)
+
+Server-rendered Django templates, not the React app. The first screen has to be light on a
+cheap phone, and WhatsApp link previews need Open Graph tags in the HTML.
+
+| Path | What it does |
+|---|---|
+| `GET /g/<token>/` | Gallery: cover, grid (60 per page, `?page=`), lightbox. Password page when locked |
+| `POST /g/<token>/unlock/` | Gallery password (CSRF, same throttle counters as the JSON API) |
+| `GET /g/<token>/photos/<id>/download/` | Re-checks access and download policy, then redirects to a 10-minute signed link |
+| `POST /g/<token>/archive/` | "Download all": finds or creates the shared ZIP job, then shows its status page |
+| `GET /g/<token>/archive/<job>/` and `…/file/` | Status page (refreshes itself), then the ZIP |
+
+- Unknown links and drafts both return the same 404 page, so a draft can't be detected. Expired galleries get a 410 page.
+- Every response sends `noindex`, `private, no-store`, and `Referrer-Policy: no-referrer`.
+- The photographer, signed in to the dashboard, can preview a gallery in any state.
+- **Data budget.** The first screen must stay under 1 MB:
+  - no web fonts and no external CSS or JS
+  - only 6 thumbnails load eagerly, and every image has fixed dimensions
+  - the photo page is gzipped (about 70 KB down to 10 KB)
+  - `galleries/tests/test_sharing_and_budget.py` enforces these rules.
+- **Cacheable image links.** Gallery image URLs are signed for a 3-hour window
+  (`GALLERY_MEDIA`), so everyone gets the same URLs and browsers can cache them. Unpublishing
+  doesn't cancel links already issued; they can stay valid for up to 6 hours.
+- **Share previews.** For a password-protected gallery, the preview shows no cover photo.
+- **ZIP archives** are shared per gallery, download setting and set of photos. They're built
+  into R2 by a worker without holding the archive in memory, and expire after 24 hours (the
+  `expire-archives` beat task). An archive built under an older download setting is never served.
 
 ## Uploads and processing
 

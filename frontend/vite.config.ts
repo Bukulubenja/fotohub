@@ -9,7 +9,8 @@ const DJANGO = process.env.DJANGO_ORIGIN ?? 'http://127.0.0.1:8000'
 export default defineConfig({
   plugins: [react()],
   server: {
-    proxy: { '/api': { target: DJANGO } },
+    // /g/ is the customer gallery: share links and previews then work from the dashboard.
+    proxy: { '/api': { target: DJANGO }, '/g': { target: DJANGO } },
   },
   test: {
     environment: 'jsdom',

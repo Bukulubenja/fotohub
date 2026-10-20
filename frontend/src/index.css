@@ -292,3 +292,42 @@ progress {
 .processing {
   margin: 0;
 }
+
+/* Share panel */
+.share {
+  display: grid;
+  gap: 12px;
+  margin-bottom: var(--gap);
+}
+
+.share h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.share-link {
+  display: flex;
+  gap: 8px;
+}
+
+.share-link input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: inherit;
+}
+
+.share-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.share-actions a.button {
+  text-decoration: none;
+}
