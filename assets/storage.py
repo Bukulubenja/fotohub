@@ -4,9 +4,15 @@ The only module that talks to the bucket. Browsers never receive credentials, ju
 short-lived presigned URLs for one object or one multipart part.
 """
 
+import datetime
+import threading
+from collections.abc import Iterator
+from contextlib import contextmanager
 from functools import lru_cache
+from urllib.parse import quote
 
 import boto3
+import botocore.auth
 from botocore.config import Config
 from botocore.exceptions import ClientError
 from django.conf import settings
@@ -17,6 +23,43 @@ NO_CONFIG_CODES = {"NoSuchCORSConfiguration", "NoSuchLifecycleConfiguration"}
 
 class StorageError(Exception):
     pass
+
+
+# --- Cache-friendly presigned URLs -------------------------------------------------------
+# A presigned URL embeds its signing time, so signing on every page view gives every visit
+# new URLs and the browser downloads the same thumbnails again. Signing gallery images at the
+# start of a fixed window makes the URL identical for everyone within that window, so the
+# browser (and later a CDN) caches it. botocore reads the time from one module function; we
+# swap in a version that honours a per-thread pinned time and is the real clock otherwise.
+_pinned = threading.local()
+_real_now = botocore.auth.get_current_datetime
+
+
+def _signing_now() -> datetime.datetime:
+    return getattr(_pinned, "at", None) or _real_now()
+
+
+botocore.auth.get_current_datetime = _signing_now
+
+
+@contextmanager
+def _signing_time(at: datetime.datetime) -> Iterator[None]:
+    _pinned.at = at
+    try:
+        yield
+    finally:
+        _pinned.at = None
+
+
+def window_start(now: datetime.datetime, window_seconds: int) -> datetime.datetime:
+    epoch = int(now.timestamp())
+    return datetime.datetime.fromtimestamp(epoch - epoch % window_seconds, tz=datetime.UTC)
+
+
+def attachment_disposition(filename: str) -> str:
+    """RFC 6266 header that survives non-ASCII names (e.g. "Amina & Dàniel.jpg")."""
+    ascii_name = filename.encode("ascii", "ignore").decode().replace('"', "") or "photo.jpg"
+    return f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(filename)}"
 
 
 class ObjectStorage:
@@ -53,6 +96,29 @@ class ObjectStorage:
     def presign_get(self, key: str) -> str:
         return self.client.generate_presigned_url(
             "get_object", Params={"Bucket": self.bucket, "Key": key}, ExpiresIn=self.url_ttl
+        )
+
+    def presign_get_cacheable(self, key: str) -> str:
+        """Same URL for everyone during a window; valid for at least one more window."""
+        window = settings.GALLERY_MEDIA["URL_WINDOW_SECONDS"]
+        start = window_start(_real_now(), window)
+        with _signing_time(start):
+            return self.client.generate_presigned_url(
+                "get_object",
+                Params={"Bucket": self.bucket, "Key": key},
+                ExpiresIn=2 * window,
+            )
+
+    def presign_download(self, key: str, filename: str) -> str:
+        """A short-lived link that makes the browser save the file instead of showing it."""
+        return self.client.generate_presigned_url(
+            "get_object",
+            Params={
+                "Bucket": self.bucket,
+                "Key": key,
+                "ResponseContentDisposition": attachment_disposition(filename),
+            },
+            ExpiresIn=settings.GALLERY_MEDIA["DOWNLOAD_URL_TTL_SECONDS"],
         )
 
     def create_multipart(self, key: str, content_type: str) -> str:

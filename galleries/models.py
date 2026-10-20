@@ -71,6 +71,10 @@ class Gallery(models.Model):
     # Bumped whenever the password or link changes, invalidating unlocked sessions.
     access_version = models.PositiveIntegerField(default=1)
     expires_at = models.DateTimeField(null=True, blank=True)
+    # Hero image and share preview. Unset (or deleted) means the first ready photo.
+    cover_photo = models.ForeignKey(
+        "assets.Photo", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
     published_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

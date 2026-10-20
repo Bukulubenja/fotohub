@@ -1,0 +1,32 @@
+{% extends "galleries/public/base.html" %}
+{% block title %}{{ event.title }} · {{ profile.display_name }}{% endblock %}
+{% block meta %}
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{ event.title }}">
+<meta property="og:description" content="Private gallery by {{ profile.display_name }}. You'll need the password from your photographer.">
+<meta property="og:url" content="{{ share_url }}">
+{% endblock %}
+{% block style %}
+form { display: grid; gap: 12px; margin-top: 24px; text-align: left; }
+label { font-weight: 600; font-size: 14px; }
+input[type=password] { min-height: 48px; padding: 0 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--text); font: 16px var(--sans); }
+.error { color: #b3261e; font-size: 14px; margin: 0; }
+@media (prefers-color-scheme: dark) { .error { color: #f2b8b5; } }
+.btn { justify-content: center; }
+{% endblock %}
+{% block body %}
+<main class="center">
+  <div class="card">
+    <div class="eyebrow">{{ profile.display_name }}</div>
+    <h1>{{ event.title }}</h1>
+    <p class="muted">This gallery is private. Enter the password your photographer sent you.</p>
+    <form method="post" action="{% url 'public-gallery-page-unlock' gallery.public_token %}">
+      {% csrf_token %}
+      <label for="password">Gallery password</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required autofocus{% if error %} aria-invalid="true" aria-describedby="password-error"{% endif %}>
+      {% if error %}<p class="error" id="password-error" role="alert">{{ error }}</p>{% endif %}
+      <button class="btn" type="submit">View photos</button>
+    </form>
+  </div>
+</main>
+{% endblock %}

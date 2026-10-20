@@ -1,0 +1,15 @@
+{% extends "galleries/public/base.html" %}
+{% block title %}{% if expired %}Gallery expired{% else %}Gallery not available{% endif %} · FotoHub{% endblock %}
+{% block body %}
+<main class="center">
+  <div class="card">
+    {% if expired %}
+    <h1>This gallery has expired</h1>
+    <p class="muted">The photographer set this link to stop working after a date. Contact them if you still need the photos.</p>
+    {% else %}
+    <h1>This gallery isn't available</h1>
+    <p class="muted">The link may be mistyped, or the photographer has taken the gallery down or sent a new link. Check the message they sent you.</p>
+    {% endif %}
+  </div>
+</main>
+{% endblock %}

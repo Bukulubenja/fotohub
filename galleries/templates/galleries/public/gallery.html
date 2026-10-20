@@ -1,0 +1,177 @@
+{% extends "galleries/public/base.html" %}
+{% block title %}{{ event.title }} · {{ profile.display_name }}{% endblock %}
+{% block meta %}
+<meta name="description" content="Photos by {{ profile.display_name }}">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{ event.title }}">
+<meta property="og:description" content="{{ event.event_date|date:'j F Y' }} · Photos by {{ profile.display_name }}">
+<meta property="og:url" content="{{ share_url }}">
+{% if share_cover %}<meta property="og:image" content="{{ share_cover.url }}">
+<meta property="og:image:width" content="{{ share_cover.width }}">
+<meta property="og:image:height" content="{{ share_cover.height }}">
+<meta name="twitter:card" content="summary_large_image">{% endif %}
+<meta name="theme-color" content="{{ profile.brand_color }}">
+{% endblock %}
+{% block style %}
+.hero { padding: 0 0 32px; text-align: center; }
+.hero-img { display: block; width: 100%; max-height: 72svh; height: auto; object-fit: cover; background: var(--line); }
+.hero-text { padding: 28px 16px 0; }
+.hero-meta { color: var(--muted); margin: 0 0 20px; }
+.toolbar { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 0 0 12px; border-bottom: 1px solid var(--line); margin-bottom: 12px; }
+.toolbar h2 { font: 400 22px/1.2 var(--serif); margin: 0; }
+.grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; }
+@media (min-width: 640px) { .grid { grid-template-columns: repeat(3, 1fr); gap: 8px; } }
+@media (min-width: 1024px) { .grid { grid-template-columns: repeat(4, 1fr); } }
+.tile { display: block; aspect-ratio: 1; overflow: hidden; background: var(--line); }
+.tile img { width: 100%; height: 100%; object-fit: cover; display: block; transition: opacity .2s; }
+@media (hover: hover) { .tile:hover img { opacity: .88; } }
+.more { display: flex; justify-content: center; padding: 28px 0 8px; }
+.hint { text-align: center; color: var(--muted); font-size: 14px; margin: 16px 0 0; }
+dialog.lightbox { width: 100vw; height: 100svh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: #0b0b0a; color: #f1eee8; }
+dialog.lightbox::backdrop { background: #0b0b0a; }
+.lb-stage { position: absolute; inset: 56px 0 72px; display: grid; place-items: center; touch-action: pan-y; }
+.lb-stage img { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
+.lb-top, .lb-bottom { position: absolute; left: 0; right: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; }
+.lb-top { top: 0; } .lb-bottom { bottom: 0; padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+.lb-btn { min-width: 44px; min-height: 44px; border: 0; border-radius: 999px; background: rgba(255,255,255,.1); color: inherit; font: 600 15px/1 var(--sans); cursor: pointer; padding: 0 16px; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+.lb-btn:disabled { opacity: .3; cursor: default; }
+.lb-count { font-size: 14px; color: #a39d93; }
+{% endblock %}
+{% block body %}
+<header class="hero">
+  {% if cover %}<img class="hero-img" src="{{ cover.url }}" width="{{ cover.width }}" height="{{ cover.height }}" alt="" fetchpriority="high">{% endif %}
+  <div class="hero-text">
+    <div class="eyebrow">{{ profile.display_name }}</div>
+    <h1>{{ event.title }}</h1>
+    <p class="hero-meta">{{ event.event_date|date:"j F Y" }}{% if event.location_label %} · {{ event.location_label }}{% endif %}</p>
+    {% if event.description %}<p class="muted">{{ event.description|linebreaksbr }}</p>{% endif %}
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="toolbar">
+    <h2>Photos <span class="muted">({{ photo_count }})</span></h2>
+    {% if not can_download %}<span class="muted">Viewing only</span>{% endif %}
+  </div>
+  {% if photo_count %}
+  <div class="grid" data-grid data-total="{{ photo_count }}">{% include "galleries/public/_photos.html" %}</div>
+  {% if page.has_next %}<div class="more"><a class="btn ghost" href="?page={{ page.next_page_number }}" data-more>Load more photos</a></div>{% endif %}
+  <p class="hint">Tap a photo to view it{% if can_download %} and download it{% endif %}.</p>
+  {% else %}
+  <p class="hint">Photos will appear here once {{ profile.display_name }} adds them.</p>
+  {% endif %}
+</main>
+
+<footer class="footer">Delivered with FotoHub</footer>
+
+<dialog class="lightbox" data-lightbox aria-label="Photo viewer">
+  <div class="lb-top">
+    <span class="lb-count" data-count aria-live="polite"></span>
+    <button class="lb-btn" type="button" data-close aria-label="Close viewer">Close</button>
+  </div>
+  <div class="lb-stage" data-stage><img alt="" data-image></div>
+  <div class="lb-bottom">
+    <button class="lb-btn" type="button" data-prev aria-label="Previous photo">‹ Prev</button>
+    {% if can_download %}<a class="lb-btn" data-download href="#">Download</a>{% endif %}
+    <button class="lb-btn" type="button" data-next aria-label="Next photo">Next ›</button>
+  </div>
+</dialog>
+
+<script>
+(() => {
+  const grid = document.querySelector("[data-grid]");
+  const box = document.querySelector("[data-lightbox]");
+  // Without <dialog> support the tiles stay plain links to the full-size image.
+  if (!grid || !box || typeof box.showModal !== "function") return;
+  const $ = (sel) => box.querySelector(sel);
+  const image = $("[data-image]"), count = $("[data-count]"), download = $("[data-download]");
+  const prev = $("[data-prev]"), next = $("[data-next]");
+  const total = Number(grid.dataset.total);
+  let moreLink = document.querySelector("[data-more]");
+  let index = -1, opener = null, loading = null;
+
+  const tiles = () => Array.from(grid.querySelectorAll("a.tile"));
+
+  function loadMore() {
+    if (!moreLink) return Promise.resolve();
+    if (loading) return loading;
+    const url = new URL(moreLink.href);
+    url.searchParams.set("partial", "1");
+    moreLink.setAttribute("aria-busy", "true");
+    loading = fetch(url, { credentials: "same-origin" })
+      .then((response) => (response.ok ? response.text() : Promise.reject(response.status)))
+      .then((html) => {
+        const fragment = document.createElement("template");
+        fragment.innerHTML = html;
+        const marker = fragment.content.querySelector("[data-next]");
+        const nextPage = marker ? marker.dataset.next : "";
+        if (marker) marker.remove();
+        grid.append(fragment.content);
+        if (nextPage) moreLink.href = nextPage;
+        else { moreLink.parentElement.remove(); moreLink = null; }
+      })
+      .catch(() => { if (moreLink) moreLink.textContent = "Couldn't load more. Tap to retry"; })
+      .finally(() => { loading = null; if (moreLink) moreLink.removeAttribute("aria-busy"); });
+    return loading;
+  }
+
+  function show(i) {
+    const all = tiles();
+    if (i < 0 || i >= all.length) return;
+    index = i;
+    const tile = all[i];
+    image.removeAttribute("src"); // don't flash the previous photo
+    image.width = Number(tile.dataset.w);
+    image.height = Number(tile.dataset.h);
+    image.alt = tile.querySelector("img").alt;
+    image.src = tile.href;
+    count.textContent = `${i + 1} / ${total}`;
+    if (download) download.href = tile.dataset.download;
+    prev.disabled = i === 0;
+    next.disabled = i === all.length - 1 && !moreLink;
+    for (const near of [all[i - 1], all[i + 1]]) if (near) new Image().src = near.href;
+    if (i >= all.length - 3) loadMore(); // fetch the next page before the viewer runs out
+  }
+
+  async function step(delta) {
+    if (delta > 0 && index >= tiles().length - 1) await loadMore();
+    show(index + delta);
+  }
+
+  grid.addEventListener("click", (event) => {
+    const tile = event.target.closest("a.tile");
+    if (!tile || event.metaKey || event.ctrlKey || event.shiftKey) return;
+    event.preventDefault();
+    opener = tile;
+    show(tiles().indexOf(tile));
+    box.showModal();
+  });
+  prev.addEventListener("click", () => step(-1));
+  next.addEventListener("click", () => step(1));
+  $("[data-close]").addEventListener("click", () => box.close());
+  box.addEventListener("keydown", (event) => {
+    if (event.key === "ArrowLeft") step(-1);
+    if (event.key === "ArrowRight") step(1);
+  });
+  box.addEventListener("close", () => {
+    image.removeAttribute("src");
+    // Return focus to the photo being viewed (it may differ from the one opened).
+    if (opener) (tiles()[index] || opener).focus();
+  });
+
+  let startX = null;
+  const stage = $("[data-stage]");
+  stage.addEventListener("pointerdown", (event) => { startX = event.clientX; });
+  stage.addEventListener("pointerup", (event) => {
+    if (startX === null) return;
+    const dx = event.clientX - startX;
+    startX = null;
+    if (Math.abs(dx) > 50) step(dx < 0 ? 1 : -1);
+  });
+
+  if (moreLink) {
+    moreLink.addEventListener("click", (event) => { event.preventDefault(); loadMore(); });
+  }
+})();
+</script>
+{% endblock %}

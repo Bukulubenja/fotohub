@@ -139,6 +139,14 @@ UPLOADS = {
     "MAX_ACTIVE_UPLOADS": 500,  # per photographer
 }
 
+# Customer gallery media. Image URLs are signed per window so browsers can cache them; an
+# unpublished gallery's already-issued URLs keep working until at most 2 windows later.
+GALLERY_MEDIA = {
+    "URL_WINDOW_SECONDS": 3 * 60 * 60,
+    "DOWNLOAD_URL_TTL_SECONDS": 10 * 60,
+    "PAGE_SIZE": 60,  # photos per page; the first screen loads only the first few
+}
+
 DEFAULT_STORAGE_QUOTA_BYTES = env.int("DEFAULT_STORAGE_QUOTA_BYTES", default=5 * GIB)
 STORAGE_WARNING_THRESHOLDS = [75, 90, 100]  # percent, spec FR-28
 

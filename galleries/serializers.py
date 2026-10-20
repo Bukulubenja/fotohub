@@ -1,6 +1,7 @@
 from django.utils import timezone
 from rest_framework import serializers
 
+from assets.models import Photo
 from galleries.models import Event, Gallery
 from galleries.services import update_gallery_settings
 
@@ -26,6 +27,9 @@ class GallerySerializer(serializers.ModelSerializer):
         write_only=True, required=False, allow_null=True, allow_blank=True, max_length=128
     )
     has_password = serializers.BooleanField(read_only=True)
+    cover_photo = serializers.PrimaryKeyRelatedField(
+        queryset=Photo.objects.none(), required=False, allow_null=True
+    )
 
     class Meta:
         model = Gallery
@@ -39,6 +43,7 @@ class GallerySerializer(serializers.ModelSerializer):
             "password",
             "has_password",
             "expires_at",
+            "cover_photo",
             "published_at",
             "created_at",
             "updated_at",
@@ -58,12 +63,21 @@ class GallerySerializer(serializers.ModelSerializer):
         if request is not None and request.user.is_authenticated:
             # Only the photographer's own events are valid targets (tenant isolation).
             self.fields["event"].queryset = Event.objects.owned_by(request.user)
+            self.fields["cover_photo"].queryset = Photo.objects.owned_by(request.user)
 
     def validate_expires_at(self, value):
         unchanged = self.instance is not None and value == self.instance.expires_at
         if value is not None and not unchanged and value <= timezone.now():
             raise serializers.ValidationError("Expiry must be in the future.")
         return value
+
+    def validate(self, attrs: dict) -> dict:
+        cover = attrs.get("cover_photo")
+        if cover is not None and (self.instance is None or cover.gallery_id != self.instance.pk):
+            raise serializers.ValidationError({"cover_photo": "Pick a photo from this gallery."})
+        if cover is not None and cover.status != Photo.Status.READY:
+            raise serializers.ValidationError({"cover_photo": "That photo is still processing."})
+        return attrs
 
     def create(self, validated_data: dict) -> Gallery:
         password = validated_data.pop("password", None)
