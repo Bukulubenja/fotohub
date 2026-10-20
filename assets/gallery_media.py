@@ -66,11 +66,26 @@ def cover_image(gallery: Gallery) -> Image | None:
     return _image(photo, "cover") if photo else None
 
 
-def download_url(photo: Photo, policy: str) -> str | None:
-    """Where a permitted download comes from; None when the policy allows none."""
+@dataclass(frozen=True)
+class DownloadSource:
+    key: str
+    filename: str
+    size: int
+
+
+def download_source(photo: Photo, policy: str) -> DownloadSource | None:
+    """The file a permitted download serves (single photo or ZIP entry); None if none."""
     if policy == Gallery.DownloadPolicy.ORIGINAL:
-        return get_storage().presign_download(photo.original_key, photo.original_filename)
-    if policy == Gallery.DownloadPolicy.WEB and "web" in photo.variants:
+        return DownloadSource(photo.original_key, photo.original_filename, photo.size_bytes)
+    web = photo.variants.get("web")
+    if policy == Gallery.DownloadPolicy.WEB and web:
         filename = PurePath(photo.original_filename).stem + WEB_DOWNLOAD_SUFFIX
-        return get_storage().presign_download(photo.variants["web"]["key"], filename)
+        return DownloadSource(web["key"], filename, web.get("bytes", 0))
     return None
+
+
+def download_url(photo: Photo, policy: str) -> str | None:
+    source = download_source(photo, policy)
+    if source is None:
+        return None
+    return get_storage().presign_download(source.key, source.filename)

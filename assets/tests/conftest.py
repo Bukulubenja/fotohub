@@ -1,22 +1,10 @@
 import uuid
 
 import pytest
-from moto import mock_aws
 from moto.server import ThreadedMotoServer
 
 from assets.storage import get_storage
 from galleries.tests.factories import EventFactory, GalleryFactory
-
-
-@pytest.fixture
-def storage(settings):
-    """An in-memory S3 bucket. The client is cached, so rebuild it inside the mock."""
-    with mock_aws():
-        get_storage.cache_clear()
-        store = get_storage()
-        store.client.create_bucket(Bucket=settings.OBJECT_STORAGE["BUCKET"])
-        yield store
-    get_storage.cache_clear()
 
 
 @pytest.fixture(scope="session")

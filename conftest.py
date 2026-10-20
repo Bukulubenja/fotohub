@@ -1,9 +1,11 @@
 import pytest
 from django.core.cache import cache
+from moto import mock_aws
 from rest_framework.test import APIClient
 from rest_framework.throttling import SimpleRateThrottle
 
 from accounts.tests.factories import UserFactory
+from assets.storage import get_storage
 
 
 @pytest.fixture
@@ -17,6 +19,7 @@ def strict_throttle(monkeypatch):
             "gallery_unlock": "2/min",
             "gallery_unlock_global": "3/min",
             "uploads": "2/min",
+            "archive": "2/min",
         },
     )
     cache.clear()
@@ -51,3 +54,14 @@ def other_client(other_photographer) -> APIClient:
     client = APIClient()
     client.force_authenticate(other_photographer)
     return client
+
+
+@pytest.fixture
+def storage(settings):
+    """An in-memory S3 bucket. The client is cached, so rebuild it inside the mock."""
+    with mock_aws():
+        get_storage.cache_clear()
+        store = get_storage()
+        store.client.create_bucket(Bucket=settings.OBJECT_STORAGE["BUCKET"])
+        yield store
+    get_storage.cache_clear()

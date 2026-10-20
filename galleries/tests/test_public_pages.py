@@ -13,25 +13,12 @@ from django.utils import timezone
 
 from assets import storage
 from assets.models import Photo
-from assets.tests.factories import PhotoFactory
+from assets.tests.factories import PhotoFactory, ready_photo
 from galleries.models import Gallery
 from galleries.tests.factories import EventFactory, GalleryFactory
 
 pytestmark = pytest.mark.django_db
 PASSWORD = "amina-and-daniel"
-
-
-def ready_photo(gallery: Gallery, **kwargs) -> Photo:
-    photo = PhotoFactory(gallery=gallery, status=Photo.Status.READY, **kwargs)
-    base = f"derivatives/{gallery.pk}/{photo.pk}"
-    photo.variants = {
-        "thumb": {"key": f"{base}/thumb.webp", "width": 400, "height": 267},
-        "viewer": {"key": f"{base}/viewer.webp", "width": 1600, "height": 1067},
-        "web": {"key": f"{base}/web.jpg", "width": 2048, "height": 1365},
-        "cover": {"key": f"{base}/cover.jpg", "width": 1200, "height": 630},
-    }
-    photo.save()
-    return photo
 
 
 @pytest.fixture

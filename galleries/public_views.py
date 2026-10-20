@@ -21,10 +21,11 @@ from django.urls import reverse
 from django.utils.cache import patch_vary_headers
 from django.views.decorators.http import require_GET, require_POST
 from rest_framework.request import Request
-from rest_framework.throttling import ScopedRateThrottle
+from rest_framework.throttling import BaseThrottle, ScopedRateThrottle
 
 from assets.gallery_media import cover_image, download_url, gallery_photos, ready_photos
 from assets.models import Photo
+from delivery.services import estimate_bytes
 from galleries import access
 from galleries.models import Gallery
 from galleries.views import NOINDEX, GalleryUnlockThrottle
@@ -84,14 +85,18 @@ def can_view(request: HttpRequest, visit: Visit) -> bool:
     return visit.is_preview or access.is_unlocked(request, visit.gallery)
 
 
+def within_rate(
+    request: HttpRequest, scope: str, token: str, extra: tuple[BaseThrottle, ...] = ()
+) -> bool:
+    """Apply DRF throttles (and their cache counters) to a plain Django view."""
+    drf_request = Request(request)
+    view = SimpleNamespace(throttle_scope=scope, kwargs={"token": token})
+    return all(t.allow_request(drf_request, view) for t in (ScopedRateThrottle(), *extra))
+
+
 def unlock_allowed(request: HttpRequest, token: str) -> bool:
     """Same counters as the JSON unlock API, so switching endpoints buys no extra guesses."""
-    drf_request = Request(request)
-    view = SimpleNamespace(throttle_scope="gallery_unlock", kwargs={"token": token})
-    return all(
-        throttle.allow_request(drf_request, view)
-        for throttle in (ScopedRateThrottle(), GalleryUnlockThrottle())
-    )
+    return within_rate(request, "gallery_unlock", token, (GalleryUnlockThrottle(),))
 
 
 def base_context(request: HttpRequest, visit: Visit) -> dict:
@@ -144,6 +149,9 @@ def gallery_page(request: HttpRequest, token: str) -> HttpResponse:
         # The share preview shows a photo only when anyone with the link may see it.
         context["cover"] = cover_image(gallery)
         context["share_cover"] = context["cover"] if not gallery.has_password else None
+        if context["can_download"] and paginator.count:
+            context["archive_bytes"] = estimate_bytes(gallery)
+            context["large_bytes"] = settings.DELIVERY["LARGE_DOWNLOAD_BYTES"]
         response = render(request, "galleries/public/gallery.html", context)
     return _gzip.process_response(request, response)
 

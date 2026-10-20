@@ -178,6 +178,19 @@ class ObjectStorage:
                 return None
             raise
 
+    def iter_object(self, key: str, chunk_size: int = 1024 * 1024) -> Iterator[bytes]:
+        """Stream an object without holding it in memory (ZIP archives of whole galleries)."""
+        body = self.client.get_object(Bucket=self.bucket, Key=key)["Body"]
+        try:
+            yield from body.iter_chunks(chunk_size)
+        finally:
+            body.close()
+
+    def upload_part(self, key: str, upload_id: str, part_number: int, data: bytes) -> None:
+        self.client.upload_part(
+            Bucket=self.bucket, Key=key, UploadId=upload_id, PartNumber=part_number, Body=data
+        )
+
     def download_to(self, key: str, path: str) -> None:
         self.client.download_file(self.bucket, key, path)
 

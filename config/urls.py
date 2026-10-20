@@ -8,4 +8,5 @@ urlpatterns = [
     path("api/v1/", include("galleries.urls")),
     path("api/v1/", include("assets.urls")),
     path("g/", include("galleries.public_urls")),
+    path("g/", include("delivery.urls")),
 ]

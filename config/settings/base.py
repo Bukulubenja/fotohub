@@ -22,6 +22,7 @@ INSTALLED_APPS = [
     "accounts",
     "galleries",
     "assets",
+    "delivery",
 ]
 
 MIDDLEWARE = [
@@ -101,6 +102,8 @@ REST_FRAMEWORK = {
         "gallery_unlock_global": "60/hour",
         # create + sign + complete per file; a 1,000-photo event stays well under this.
         "uploads": "1200/min",
+        # "Download all" requests per visitor; the archives themselves are shared.
+        "archive": "20/hour",
     },
     # Trusted reverse proxies in front of the app. With 0, X-Forwarded-For is ignored
     # and throttles key on REMOTE_ADDR, so clients can't spoof their identity.
@@ -147,6 +150,14 @@ GALLERY_MEDIA = {
     "PAGE_SIZE": 60,  # photos per page; the first screen loads only the first few
 }
 
+# Download-all ZIP archives (spec FR-21).
+DELIVERY = {
+    "ARCHIVE_TTL_SECONDS": 24 * 60 * 60,
+    "MAX_ARCHIVE_BYTES": 20 * GIB,
+    "STUCK_AFTER_SECONDS": 3 * 60 * 60,  # longer than the build task's time limit
+    "LARGE_DOWNLOAD_BYTES": 200 * MIB,  # above this, suggest Wi-Fi
+}
+
 DEFAULT_STORAGE_QUOTA_BYTES = env.int("DEFAULT_STORAGE_QUOTA_BYTES", default=5 * GIB)
 STORAGE_WARNING_THRESHOLDS = [75, 90, 100]  # percent, spec FR-28
 
@@ -158,6 +169,10 @@ CELERY_BEAT_SCHEDULE = {
     "expire-stale-uploads": {
         "task": "assets.tasks.expire_stale_uploads",
         "schedule": 15 * 60,
+    },
+    "expire-archives": {
+        "task": "delivery.tasks.expire_archives",
+        "schedule": 30 * 60,
     },
     "requeue-stuck-photos": {
         "task": "assets.tasks.requeue_stuck_photos",
