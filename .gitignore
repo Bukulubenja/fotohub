@@ -10,3 +10,7 @@ htmlcov/
 media/
 staticfiles/
 node_modules/
+
+# Upload drill output (scripts/upload_drill.py)
+*.jsonl
+*-report.json

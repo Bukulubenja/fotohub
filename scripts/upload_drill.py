@@ -383,10 +383,12 @@ def synthetic_photos(folder: Path, count: int, seed: int) -> list[Path]:
     return paths
 
 
-def build_items(sources: list[Path], count: int) -> list[Item]:
+def build_items(sources: list[Path], count: int, once: Path | None = None) -> list[Item]:
+    """Cycle through `sources`; `once` (the big synthetic file) goes first and isn't repeated."""
+    order = [once] if once else []
     items = []
     for index in range(count):
-        path = sources[index % len(sources)]
+        path = order[index] if index < len(order) else sources[(index - len(order)) % len(sources)]
         suffix = path.suffix.lower()
         items.append(
             Item(f"drill-{index + 1:04d}{suffix}", path, path.stat().st_size, CONTENT_TYPES[suffix])
@@ -554,7 +556,10 @@ def main(argv: list[str] | None = None) -> int:
             sources = synthetic_photos(Path(scratch), min(args.photos, 8), args.seed)
         else:
             sources = photos_from_dir(args.image_dir)
-        items = build_items(sources, args.photos)
+        if args.synthetic and len(sources) > 1:
+            items = build_items(sources[1:], args.photos, once=sources[0])
+        else:
+            items = build_items(sources, args.photos)
         gallery = ensure_gallery(api, journal, args.gallery)
         check_quota(api, items, journal)
         total = sum(i.size for i in items)
