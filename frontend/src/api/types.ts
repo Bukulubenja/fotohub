@@ -69,3 +69,40 @@ export interface Page<T> {
   next: string | null
   results: T[]
 }
+
+// --- Billing (billing/serializers.py) ---------------------------------------------------
+
+export interface Plan {
+  code: string
+  name: string
+  price_ugx: number
+  period_days: number
+  storage_quota_bytes: number
+}
+
+export type SubscriptionState = 'active' | 'due' | 'grace' | 'lapsed'
+
+export interface Subscription {
+  plan: Plan
+  paid_until: string
+  state: SubscriptionState
+  can_upload: boolean
+  galleries_live: boolean
+  days_left: number
+}
+
+export type PaymentStatus = 'pending' | 'succeeded' | 'failed'
+
+export interface Payment {
+  id: string
+  plan: string
+  periods: number
+  amount_ugx: number
+  status: PaymentStatus
+  failure_reason: string
+}
+
+export interface StartedPayment {
+  payment: Payment
+  next: { action: 'prompt' | 'redirect'; message: string; redirect_url: string }
+}

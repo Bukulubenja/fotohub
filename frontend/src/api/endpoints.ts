@@ -3,9 +3,13 @@ import type {
   Gallery,
   Me,
   Page,
+  Payment,
   Photo,
   PhotoStatus,
+  Plan,
+  StartedPayment,
   StartedUpload,
+  Subscription,
   StorageUsage,
   UploadConfig,
   UploadedPart,
@@ -68,3 +72,19 @@ export const uploadApi: UploadApi = {
 }
 
 export const uploadConfig = () => apiRequest<UploadConfig>('GET', '/uploads/config/')
+
+/** Photographer subscription; swapped for a fake in tests. */
+export interface BillingApi {
+  plans(): Promise<Plan[]>
+  subscription(): Promise<Subscription>
+  startPayment(plan: string, periods: number, phone: string): Promise<StartedPayment>
+  payment(id: string): Promise<Payment>
+}
+
+export const billing: BillingApi = {
+  plans: () => apiRequest('GET', '/billing/plans/'),
+  subscription: () => apiRequest('GET', '/billing/subscription/'),
+  startPayment: (plan, periods, phone) =>
+    apiRequest('POST', '/billing/payments/', { plan, periods, phone }),
+  payment: (id) => apiRequest('GET', `/billing/payments/${id}/`),
+}

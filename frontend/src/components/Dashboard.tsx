@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { auth, galleries as galleriesApi, photos, storage, uploadConfig } from '../api/endpoints'
-import type { Gallery, Me, StorageUsage, UploadConfig } from '../api/types'
+import type { Gallery, Me, StorageUsage, Subscription, UploadConfig } from '../api/types'
 import { formatBytes, plural } from '../format'
 import { useUploadQueue } from '../upload/useUploadQueue'
+import { BillingPanel } from './BillingPanel'
 import { SharePanel } from './SharePanel'
 import { UploadPanel } from './UploadPanel'
 
@@ -84,6 +85,9 @@ export function Dashboard({ me, onLogout }: { me: Me; onLogout: () => void }) {
   const [config, setConfig] = useState<UploadConfig | null>(null)
   const [usage, setUsage] = useState<StorageUsage | null>(null)
   const [error, setError] = useState('')
+  // A state setter is stable, so BillingPanel doesn't refetch on every render.
+  const [subscription, setSubscription] = useState<Subscription | null>(null)
+  const uploadsPaused = subscription !== null && !subscription.can_upload
 
   const refreshUsage = useCallback(() => {
     storage.usage().then(setUsage, () => undefined)
@@ -120,6 +124,7 @@ export function Dashboard({ me, onLogout }: { me: Me; onLogout: () => void }) {
       </header>
 
       <main className="content">
+        <BillingPanel onChange={setSubscription} />
         {error && <p className="notice notice--error" role="alert">{error}</p>}
         {config && galleryList.length === 0 && !error && (
           <p className="panel muted">Create a gallery first, then come back to add photos.</p>
@@ -136,7 +141,13 @@ export function Dashboard({ me, onLogout }: { me: Me; onLogout: () => void }) {
             </select>
           </label>
         )}
-        {gallery && config && (
+        {gallery && uploadsPaused && (
+          <>
+            <SharePanel gallery={gallery} />
+            <p className="panel muted">Uploads are paused until you renew. Your galleries stay online meanwhile.</p>
+          </>
+        )}
+        {gallery && config && !uploadsPaused && (
           // keyed so switching galleries gets a fresh queue view
           <GalleryUploads key={gallery.id} gallery={gallery} config={config} onUploaded={refreshUsage} />
         )}

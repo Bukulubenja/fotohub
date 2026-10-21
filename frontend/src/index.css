@@ -331,3 +331,61 @@ progress {
 .share-actions a.button {
   text-decoration: none;
 }
+
+/* Billing */
+.billing {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+  margin-bottom: var(--gap);
+}
+
+.billing p {
+  margin: 0;
+}
+
+.billing--warn {
+  border-color: #d9a400;
+}
+
+.billing--alert {
+  border-color: #c0392b;
+}
+
+.renew {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+  max-width: 420px;
+}
+
+.renew label {
+  display: grid;
+  gap: 4px;
+  font-weight: 600;
+}
+
+.renew select,
+.renew input {
+  font: inherit;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: inherit;
+}
+
+.renew-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

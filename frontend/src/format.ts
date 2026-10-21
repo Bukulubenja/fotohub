@@ -14,3 +14,11 @@ export function formatBytes(bytes: number): string {
 export function plural(count: number, one: string, many = `${one}s`): string {
   return `${count.toLocaleString()} ${count === 1 ? one : many}`
 }
+
+export function formatUgx(amount: number): string {
+  return `UGX ${amount.toLocaleString('en-US')}`
+}
+
+export function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+}
