@@ -27,5 +27,7 @@ REST_FRAMEWORK = {
         "gallery_unlock_global": "1000/min",
         "uploads": "1000/min",
         "archive": "1000/min",
+        "payments": "1000/min",
+        "checkout": "1000/min",
     },
 }

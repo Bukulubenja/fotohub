@@ -20,6 +20,8 @@ def strict_throttle(monkeypatch):
             "gallery_unlock_global": "3/min",
             "uploads": "2/min",
             "archive": "2/min",
+            "payments": "2/min",
+            "checkout": "2/min",
         },
     )
     cache.clear()

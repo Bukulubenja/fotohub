@@ -1,4 +1,4 @@
-"""Download-all archives: find or create the shared job, build it, expire it.
+"""ZIPs of paid orders: find or create the job, build it, expire it.
 
 Views and tasks call these; only this module changes a job's status.
 """
@@ -17,9 +17,11 @@ from assets.storage import get_storage
 from delivery.archive import Entry, unique_names, write_archive
 from delivery.models import DownloadJob
 from galleries.models import Gallery
+from shop.models import Order
 
 logger = logging.getLogger(__name__)
 
+ORIGINAL = Gallery.DownloadPolicy.ORIGINAL  # buyers get the full original
 LIVE = (DownloadJob.Status.QUEUED, DownloadJob.Status.BUILDING, DownloadJob.Status.READY)
 
 
@@ -33,54 +35,51 @@ def archive_entries(photos: list[Photo], policy: str) -> list[Entry]:
     return [Entry(s.key, name, s.size) for s, name in zip(sources, names, strict=True)]
 
 
-def fingerprint(photos: list[Photo], policy: str) -> str:
-    digest = hashlib.sha256(policy.encode())
+def fingerprint(photos: list[Photo]) -> str:
+    digest = hashlib.sha256()
     for photo in photos:
         digest.update(f"{photo.pk}:{photo.updated_at.isoformat()};".encode())
     return digest.hexdigest()
 
 
-def estimate_bytes(gallery: Gallery) -> int:
-    """Size of "Download all", shown on the button before anyone asks for it."""
-    photos = list(ready_photos(gallery))
-    return sum(entry.size for entry in archive_entries(photos, gallery.download_policy))
+def order_photos(order: Order) -> list[Photo]:
+    """The order's photos that still exist and are ready, in gallery (filename) order."""
+    ids = order.items.filter(photo__isnull=False).values_list("photo_id", flat=True)
+    if order.gallery is None:
+        return []
+    return list(ready_photos(order.gallery).filter(pk__in=ids))
 
 
-def request_archive(gallery: Gallery, now: datetime.datetime | None = None) -> DownloadJob:
-    """The live job for this gallery's current photos, creating (and queuing) one if needed."""
+def request_archive(order: Order, now: datetime.datetime | None = None) -> DownloadJob:
+    """The live ZIP job for a paid order, creating (and queuing) one if needed."""
     from delivery.tasks import build_archive
 
     now = now or timezone.now()
-    if gallery.download_policy == Gallery.DownloadPolicy.DISABLED:
-        raise ArchiveUnavailable("Downloads are turned off for this gallery.")
-    photos = list(ready_photos(gallery))
-    entries = archive_entries(photos, gallery.download_policy)
+    if order.status != Order.Status.PAID:
+        raise ArchiveUnavailable("This order hasn't been paid yet.")
+    photos = order_photos(order)
+    entries = archive_entries(photos, ORIGINAL)
     if not entries:
-        raise ArchiveUnavailable("There are no photos to download yet.")
+        raise ArchiveUnavailable("None of the photos in this order are available any more.")
     expected = sum(entry.size for entry in entries)
     if expected > settings.DELIVERY["MAX_ARCHIVE_BYTES"]:
         raise ArchiveUnavailable(
-            "This gallery is too large for one download. Download photos one at a time, "
-            "or ask your photographer to split it into albums."
+            "This order is too large for one ZIP. Download photos one at a time."
         )
-    photo_set = fingerprint(photos, gallery.download_policy)
+    photo_set = fingerprint(photos)
     with transaction.atomic():
-        Gallery.objects.select_for_update().get(pk=gallery.pk)  # one creator at a time
+        Order.objects.select_for_update().get(pk=order.pk)  # one creator at a time
         existing = (
-            DownloadJob.objects.filter(
-                gallery=gallery,
-                policy=gallery.download_policy,
-                fingerprint=photo_set,
-                status__in=LIVE,
-            )
+            DownloadJob.objects.filter(order=order, fingerprint=photo_set, status__in=LIVE)
             .exclude(expires_at__lte=now)
             .first()
         )
         if existing:
             return existing
         job = DownloadJob.objects.create(
-            gallery=gallery,
-            policy=gallery.download_policy,
+            gallery=order.gallery,
+            order=order,
+            policy=ORIGINAL,
             fingerprint=photo_set,
             photo_count=len(entries),
             expected_bytes=expected,
@@ -90,17 +89,16 @@ def request_archive(gallery: Gallery, now: datetime.datetime | None = None) -> D
 
 
 def build(job_id: str) -> None:
-    """Called by the worker. Re-reads the photos so the ZIP matches the gallery right now."""
+    """Called by the worker. Re-reads the photos so a deleted one is simply left out."""
     with transaction.atomic():
-        job = DownloadJob.objects.select_for_update().select_related("gallery").get(pk=job_id)
+        job = DownloadJob.objects.select_for_update().select_related("order").get(pk=job_id)
         if job.status != DownloadJob.Status.QUEUED:
             return  # already built, building elsewhere, or failed: don't double-build
         job.status = DownloadJob.Status.BUILDING
         job.started_at = timezone.now()
         job.save(update_fields=["status", "started_at"])
 
-    photos = list(ready_photos(job.gallery))
-    entries = archive_entries(photos, job.policy)
+    entries = archive_entries(order_photos(job.order), ORIGINAL)
     try:
         size = write_archive(
             get_storage(),

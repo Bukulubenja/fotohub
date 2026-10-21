@@ -27,6 +27,7 @@
 @media (hover: hover) { .tile:hover img { opacity: .88; } }
 .more { display: flex; justify-content: center; padding: 28px 0 8px; }
 .note { font-size: 14px; margin: 10px 0 0; }
+.cart-link { font-weight: 600; }
 .share { display: flex; justify-content: center; gap: 8px; margin-top: 16px; }
 .hint { text-align: center; color: var(--muted); font-size: 14px; margin: 16px 0 0; }
 dialog.lightbox { width: 100vw; height: 100svh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: #0b0b0a; color: #f1eee8; }
@@ -47,11 +48,11 @@ dialog.lightbox::backdrop { background: #0b0b0a; }
     <h1>{{ event.title }}</h1>
     <p class="hero-meta">{{ event.event_date|date:"j F Y" }}{% if event.location_label %} · {{ event.location_label }}{% endif %}</p>
     {% if event.description %}<p class="muted">{{ event.description|linebreaksbr }}</p>{% endif %}
-    {% if archive_bytes %}
-    <form method="post" action="{% url 'public-archive-request' gallery.public_token %}">
-      <button class="btn" type="submit">Download all · {{ archive_bytes|filesizeformat }}</button>
+    {% if unsold_count %}
+    <form method="post" action="{% url 'shop-cart-add-all' gallery.public_token %}">
+      <button class="btn" type="submit">Buy all {{ unsold_count }} photo{{ unsold_count|pluralize }} · {{ unsold_total }}</button>
     </form>
-    <p class="note muted">{{ photo_count }} photo{{ photo_count|pluralize }} in one ZIP file{% if archive_bytes > large_bytes %}. Large download: use Wi-Fi if you can{% endif %}.</p>
+    <p class="note muted">Full-quality originals, {{ unit_price }} each (or {{ unsold_total_usd }} by card).</p>
     {% endif %}
     <div class="share">
       <button class="btn ghost" type="button" data-share hidden>Share</button>
@@ -63,12 +64,12 @@ dialog.lightbox::backdrop { background: #0b0b0a; }
 <main class="wrap">
   <div class="toolbar">
     <h2>Photos <span class="muted">({{ photo_count }})</span></h2>
-    {% if not can_download %}<span class="muted">Viewing only</span>{% endif %}
+    <a class="cart-link" href="{% url 'shop-cart' gallery.public_token %}">Cart (<span data-cart-count>{{ cart_count }}</span>)</a>
   </div>
   {% if photo_count %}
   <div class="grid" data-grid data-total="{{ photo_count }}">{% include "galleries/public/_photos.html" %}</div>
   {% if page.has_next %}<div class="more"><a class="btn ghost" href="?page={{ page.next_page_number }}" data-more>Load more photos</a></div>{% endif %}
-  <p class="hint">Tap a photo to view it{% if can_download %} and download it{% endif %}.</p>
+  <p class="hint">Tap a photo to view it. Add the ones you love to your cart: {{ unit_price }} each.</p>
   {% else %}
   <p class="hint">Photos will appear here once {{ profile.display_name }} adds them.</p>
   {% endif %}
@@ -84,12 +85,14 @@ dialog.lightbox::backdrop { background: #0b0b0a; }
   <div class="lb-stage" data-stage><img alt="" data-image></div>
   <div class="lb-bottom">
     <button class="lb-btn" type="button" data-prev aria-label="Previous photo">‹ Prev</button>
-    {% if can_download %}<a class="lb-btn" data-download href="#">Download</a>{% endif %}
+    <a class="lb-btn" data-download href="#" hidden>Download</a>
+    <button class="lb-btn" type="button" data-add data-url="{% url 'shop-cart-add' gallery.public_token %}" hidden>Add to cart · {{ unit_price }}</button>
     <button class="lb-btn" type="button" data-next aria-label="Next photo">Next ›</button>
   </div>
 </dialog>
 
 {{ share_data|json_script:"share-data" }}
+{{ cart_ids|json_script:"cart-ids" }}
 <script>
 (() => {
   // Share sheet on phones, copy link elsewhere; WhatsApp link works without JS.
@@ -114,6 +117,9 @@ dialog.lightbox::backdrop { background: #0b0b0a; }
   if (!grid || !box || typeof box.showModal !== "function") return;
   const $ = (sel) => box.querySelector(sel);
   const image = $("[data-image]"), count = $("[data-count]"), download = $("[data-download]");
+  const add = $("[data-add]"), addLabel = add.textContent;
+  const cartCount = document.querySelector("[data-cart-count]");
+  const inCart = new Set(JSON.parse(document.getElementById("cart-ids").textContent));
   const prev = $("[data-prev]"), next = $("[data-next]");
   const total = Number(grid.dataset.total);
   let moreLink = document.querySelector("[data-more]");
@@ -155,7 +161,12 @@ dialog.lightbox::backdrop { background: #0b0b0a; }
     image.alt = tile.querySelector("img").alt;
     image.src = tile.href;
     count.textContent = `${i + 1} / ${total}`;
-    if (download) download.href = tile.dataset.download;
+    const owned = Boolean(tile.dataset.download);
+    download.hidden = !owned;
+    if (owned) download.href = tile.dataset.download;
+    add.hidden = owned;
+    add.disabled = inCart.has(tile.dataset.photo);
+    add.textContent = add.disabled ? "In your cart ✓" : addLabel;
     prev.disabled = i === 0;
     next.disabled = i === all.length - 1 && !moreLink;
     for (const near of [all[i - 1], all[i + 1]]) if (near) new Image().src = near.href;
@@ -174,6 +185,25 @@ dialog.lightbox::backdrop { background: #0b0b0a; }
     opener = tile;
     show(tiles().indexOf(tile));
     box.showModal();
+  });
+  add.addEventListener("click", async () => {
+    const photo = tiles()[index].dataset.photo;
+    add.disabled = true;
+    try {
+      const response = await fetch(add.dataset.url, {
+        method: "POST",
+        headers: { Accept: "application/json" },
+        body: new URLSearchParams({ photo }),
+        credentials: "same-origin",
+      });
+      if (!response.ok) throw new Error(String(response.status));
+      inCart.add(photo);
+      cartCount.textContent = (await response.json()).count;
+      add.textContent = "In your cart ✓";
+    } catch {
+      add.disabled = false;
+      add.textContent = "Couldn't add. Tap to retry";
+    }
   });
   prev.addEventListener("click", () => step(-1));
   next.addEventListener("click", () => step(1));

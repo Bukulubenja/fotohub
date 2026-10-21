@@ -7,6 +7,8 @@ urlpatterns = [
     path("api/v1/", include("accounts.urls")),
     path("api/v1/", include("galleries.urls")),
     path("api/v1/", include("assets.urls")),
+    path("api/v1/", include("billing.urls")),
     path("g/", include("galleries.public_urls")),
-    path("g/", include("delivery.urls")),
+    path("g/", include("shop.gallery_urls")),
+    path("orders/", include("shop.order_urls")),
 ]

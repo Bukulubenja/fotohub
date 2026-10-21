@@ -23,6 +23,8 @@ INSTALLED_APPS = [
     "galleries",
     "assets",
     "delivery",
+    "billing",
+    "shop",
 ]
 
 MIDDLEWARE = [
@@ -104,6 +106,9 @@ REST_FRAMEWORK = {
         "uploads": "1200/min",
         # "Download all" requests per visitor; the archives themselves are shared.
         "archive": "20/hour",
+        # Starting a payment sends a prompt to a phone; don't let a loop spam someone.
+        "payments": "10/hour",
+        "checkout": "20/hour",  # photo orders per visitor
     },
     # Trusted reverse proxies in front of the app. With 0, X-Forwarded-For is ignored
     # and throttles key on REMOTE_ADDR, so clients can't spoof their identity.
@@ -156,6 +161,34 @@ DELIVERY = {
     "MAX_ARCHIVE_BYTES": 20 * GIB,
     "STUCK_AFTER_SECONDS": 3 * 60 * 60,  # longer than the build task's time limit
     "LARGE_DOWNLOAD_BYTES": 200 * MIB,  # above this, suggest Wi-Fi
+}
+
+# Subscriptions (spec FR-26..29). Plan prices live in the admin.
+BILLING = {
+    "PROVIDER": env("BILLING_PROVIDER", default="fake"),
+    "TRIAL_PLAN": "trial",
+    "TRIAL_DAYS": 14,
+    "DUE_DAYS": 3,  # reminder this long before paid_until
+    "GRACE_DAYS": 7,  # after paid_until: uploads stop, galleries stay live
+    "LAPSED_VISIBLE_DAYS": 30,  # after grace: galleries still viewable, then hidden
+    "FAKE_WEBHOOK_SECRET": env("BILLING_FAKE_WEBHOOK_SECRET", default=""),
+    "FAKE_AUTO_CONFIRM": False,
+}
+
+# Photo sales to gallery visitors: one fixed price per photo (decided 2026-10-21).
+# FotoHub keeps the revenue. Update PRICE_UGX by hand when the exchange rate moves.
+SHOP = {
+    "PRICE_USD_CENTS": env.int("SHOP_PRICE_USD_CENTS", default=24),
+    "PRICE_UGX": env.int("SHOP_PRICE_UGX", default=900),
+    "SITE_URL": env("SITE_URL", default="http://127.0.0.1:8000"),  # links in receipt emails
+}
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="FotoHub <photos@fotohub.ug>")
+# Django 6.1 MAILERS (EMAIL_BACKEND is deprecated). Console in development; production sets
+# MAILER_BACKEND to SMTP or a provider backend, with its OPTIONS, at deployment (phase 4).
+MAILERS = {
+    "default": {
+        "BACKEND": env("MAILER_BACKEND", default="django.core.mail.backends.console.EmailBackend"),
+    }
 }
 
 DEFAULT_STORAGE_QUOTA_BYTES = env.int("DEFAULT_STORAGE_QUOTA_BYTES", default=5 * GIB)

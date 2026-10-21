@@ -2,6 +2,9 @@ from .base import *  # noqa: F403
 from .base import env
 
 SECRET_KEY = env("DJANGO_SECRET_KEY")
+
+if BILLING["PROVIDER"] == "fake":  # noqa: F405
+    raise RuntimeError("Set BILLING_PROVIDER: the fake provider takes no real money.")
 CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS", default=[])
 
 # Database cache until Redis arrives with Celery. Run `manage.py createcachetable` once.

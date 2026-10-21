@@ -53,9 +53,11 @@ server to sign arbitrary requests, which conflicts with the server-owned lifecyc
 | `assets/` | `Photo`, `UploadSession`, quota reservation and upload lifecycle (`services.py`), R2 client (`storage.py`), pyvips variants (`processing.py`, Celery `tasks.py`) |
 
 | `galleries/public_views.py` | Customer gallery at `/g/<token>/`: server-rendered page, password unlock, single downloads, owner preview |
-| `delivery/` | "Download all": shared `DownloadJob`s, ZIP streamed into R2 (`archive.py`), status page, expiry |
+| `delivery/` | ZIPs of paid orders: `DownloadJob`, ZIP streamed into R2 (`archive.py`), expiry |
+| `shop/` | Photo sales to gallery visitors: session cart, checkout (UGX mobile money or USD card), `Order`, the buyer's order page |
+| `billing/` | Photographer subscriptions: `Plan`, `Subscription` (lifecycle in `lifecycle.py`), `Payment`, the `PaymentProvider` seam (`providers/`), webhook |
 
-Planned apps: `billing`, `audit`.
+Planned app: `audit`.
 
 ## API (v1)
 
@@ -109,6 +111,39 @@ cheap phone, and WhatsApp link previews need Open Graph tags in the HTML.
 - **ZIP archives** are shared per gallery, download setting and set of photos. They're built
   into R2 by a worker without holding the archive in memory, and expire after 24 hours (the
   `expire-archives` beat task). An archive built under an older download setting is never served.
+
+## Selling photos (`shop/`)
+
+Every gallery sells its photos at one fixed price: **USD 0.24**, or a fixed shilling price
+(`SHOP["PRICE_UGX"]`, default UGX 900). FotoHub keeps the revenue; there are no
+photographer payouts yet.
+
+- **Cart.** Visitors add photos from the viewer, or the whole gallery with "Buy all N photos", which sums every photo they don't already own. The cart lives in the session; customers have no accounts.
+- **Checkout.** UGX by MTN/Airtel mobile money (the number is normalised to `2567…`), or USD by card. Each order stores its price and photo list at checkout.
+- **After payment.** The buyer gets an order page at `/orders/<token>/`, which is also emailed. That link is their key: original downloads, one at a time or as a ZIP. It keeps working if the gallery is later unpublished. Opening it in any browser also unlocks those photos in the gallery.
+- **No free downloads.** Customer downloads need a paid order. The photographer, previewing their own gallery, can download free.
+- **Amounts are checked.** A payment counts only if the provider reports exactly the order's amount and currency, and repeated webhooks are ignored.
+- **CSRF.** Cart changes skip CSRF, because the gzipped gallery page carries no token and a forged request can only fill a cart. Checkout and order actions require it.
+
+## Subscriptions (`billing/`)
+
+New photographers get a 14-day trial. The state is derived from `paid_until`, so there's no
+job that has to run on time:
+
+`active` → `due` (3 days before) → `grace` (7 days: uploads stop, galleries stay live) →
+`lapsed`. Galleries stay viewable for 30 more days, then customers see "temporarily
+unavailable". Photos are never deleted automatically.
+
+- **Plans** (Starter, Pro, Studio) are seeded with **placeholder prices**. Edit them in the admin once pricing is decided.
+- **Payment providers** plug in behind `billing/providers/base.py`. One webhook, `/api/v1/billing/webhooks/<provider>/`, settles both renewals and photo orders.
+- **Only the `fake` provider exists so far.** Production settings refuse to start with it.
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/api/v1/billing/plans/` | Plans offered for sale |
+| GET | `/api/v1/billing/subscription/` | `state`, `can_upload`, `galleries_live`, `days_left`, plan |
+| POST | `/api/v1/billing/payments/` | `{plan, periods, phone}`. Starts a mobile-money prompt |
+| GET | `/api/v1/billing/payments/{id}/` | Polled by the dashboard; asks the provider if still pending |
 
 ## Uploads and processing
 

@@ -16,6 +16,8 @@ from assets.models import Photo
 from assets.tests.factories import PhotoFactory, ready_photo
 from galleries.models import Gallery
 from galleries.tests.factories import EventFactory, GalleryFactory
+from shop.models import Order
+from shop.tests.factories import make_order
 
 pytestmark = pytest.mark.django_db
 PASSWORD = "amina-and-daniel"
@@ -128,15 +130,15 @@ class TestGalleryPage:
         assert "<script>alert(1)" not in html
         assert "&lt;script&gt;alert(1)" in html
 
-    def test_viewing_only_gallery_offers_no_downloads(self, client: Client, published):
-        published.download_policy = Gallery.DownloadPolicy.DISABLED
-        published.save()
-        ready_photo(published)
+    def test_only_bought_photos_offer_a_download(self, client: Client, published):
+        bought, other = ready_photo(published), ready_photo(published)
+        make_order(published, [bought], client=client)
 
         html = client.get(page_url(published)).content.decode()
 
-        assert "data-download=" not in html
-        assert "Viewing only" in html
+        assert download_url(published, bought) in html
+        assert download_url(published, other) not in html
+        assert "Buy all 1 photo · UGX 900" in html
 
 
 class TestUnavailable:
@@ -278,39 +280,46 @@ class TestPagination:
 
 
 class TestDownload:
-    def test_web_policy_serves_the_web_jpeg_as_attachment(self, client: Client, published):
-        photo = ready_photo(published, original_filename="IMG_0042.CR3.jpeg")
+    def test_unbought_photo_is_refused(self, client: Client, published):
+        photo = ready_photo(published)
+
+        assert client.get(download_url(published, photo)).status_code == 404
+
+    def test_bought_photo_downloads_the_original(self, client: Client, published):
+        photo = ready_photo(published, original_filename="Dàniel.jpg")
+        make_order(published, [photo], client=client)
 
         response = client.get(download_url(published, photo))
 
         assert response.status_code == 302
         target = urlparse(response["Location"])
-        assert target.path.endswith(f"{photo.pk}/web.jpg")
-        disposition = parse_qs(target.query)["response-content-disposition"][0]
-        assert disposition.startswith('attachment; filename="IMG_0042.CR3.jpg"')
-        assert response["X-Robots-Tag"] == "noindex, nofollow"
-
-    def test_original_policy_serves_the_original(self, client: Client, published):
-        published.download_policy = Gallery.DownloadPolicy.ORIGINAL
-        published.save()
-        photo = ready_photo(published, original_filename="Dàniel.jpg")
-
-        response = client.get(download_url(published, photo))
-
-        target = urlparse(response["Location"])
         assert target.path.endswith(photo.original_key)
         disposition = parse_qs(target.query)["response-content-disposition"][0]
         assert "filename*=UTF-8''D%C3%A0niel.jpg" in disposition
+        assert response["X-Robots-Tag"] == "noindex, nofollow"
 
-    def test_disabled_policy_refuses(self, client: Client, published):
-        published.download_policy = Gallery.DownloadPolicy.DISABLED
-        published.save()
+    def test_unpaid_order_unlocks_nothing(self, client: Client, published):
         photo = ready_photo(published)
+        make_order(published, [photo], status=Order.Status.PENDING, client=client)
 
         assert client.get(download_url(published, photo)).status_code == 404
 
+    def test_another_browsers_order_unlocks_nothing(self, client: Client, published):
+        photo = ready_photo(published)
+        make_order(published, [photo])  # paid, but not in this session
+
+        assert client.get(download_url(published, photo)).status_code == 404
+
+    def test_owner_preview_downloads_free(self, client: Client, published, photographer):
+        photo = ready_photo(published)
+        client.force_login(photographer)
+
+        assert client.get(download_url(published, photo)).status_code == 302
+
     def test_photo_from_another_gallery_is_404(self, client: Client, published):
-        foreign = ready_photo(GalleryFactory(status=Gallery.Status.PUBLISHED))
+        foreign_gallery = GalleryFactory(status=Gallery.Status.PUBLISHED)
+        foreign = ready_photo(foreign_gallery)
+        make_order(foreign_gallery, [foreign], client=client)
 
         assert client.get(download_url(published, foreign)).status_code == 404
 
@@ -328,13 +337,6 @@ class TestDownload:
 
         assert response.status_code == 302
         assert response["Location"] == page_url(locked_gallery)
-
-    def test_unpublished_gallery_blocks_downloads(self, client: Client, published):
-        photo = ready_photo(published)
-        published.status = Gallery.Status.DRAFT
-        published.save()
-
-        assert client.get(download_url(published, photo)).status_code == 404
 
 
 class TestCacheableUrls:

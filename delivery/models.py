@@ -3,14 +3,11 @@ import uuid
 from django.db import models
 
 from galleries.models import Gallery
+from shop.models import Order
 
 
 class DownloadJob(models.Model):
-    """A ZIP of a gallery's downloadable photos (spec FR-21).
-
-    Shared: every visitor asking for the same gallery, policy and photo set gets the same
-    job, so one wedding shared with 200 guests builds one archive, not 200.
-    """
+    """A ZIP of the photos in one paid order (spec FR-21). Re-requests reuse the live job."""
 
     class Status(models.TextChoices):
         QUEUED = "queued"
@@ -21,6 +18,7 @@ class DownloadJob(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     gallery = models.ForeignKey(Gallery, on_delete=models.CASCADE, related_name="download_jobs")
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="download_jobs")
     policy = models.CharField(max_length=10, choices=Gallery.DownloadPolicy)
     # Which photos (and versions of them) the archive holds; a change means a new archive.
     fingerprint = models.CharField(max_length=64)

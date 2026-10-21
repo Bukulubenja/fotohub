@@ -13,6 +13,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle, SimpleRateThrottle
 from rest_framework.views import APIView
 
+from billing import services as billing
 from galleries import access
 from galleries.models import Event, Gallery
 from galleries.serializers import (
@@ -85,6 +86,8 @@ def get_public_gallery(token: str) -> Gallery:
         raise NotFound()
     if gallery.is_expired():
         raise GalleryGone()
+    if not billing.standing_for(gallery.event.owner).galleries_live:
+        raise NotFound()  # the photographer's account has lapsed (FR-29)
     return gallery
 
 

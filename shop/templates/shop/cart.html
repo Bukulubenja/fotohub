@@ -1,0 +1,74 @@
+{% extends "galleries/public/base.html" %}
+{% block title %}Your cart · {{ event.title }}{% endblock %}
+{% block style %}
+.page { max-width: 720px; margin: 0 auto; padding: 32px 16px 56px; }
+.items { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; margin: 20px 0; }
+.item { position: relative; aspect-ratio: 1; background: var(--line); overflow: hidden; border-radius: 6px; }
+.item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.item form { position: absolute; top: 4px; right: 4px; margin: 0; }
+.item button { width: 32px; height: 32px; border: 0; border-radius: 50%; background: rgba(0,0,0,.6); color: #fff; font-size: 18px; line-height: 1; cursor: pointer; }
+.summary { display: flex; justify-content: space-between; align-items: baseline; border-top: 1px solid var(--line); padding-top: 16px; }
+.summary strong { font: 400 28px/1.2 var(--serif); }
+fieldset { border: 0; padding: 0; margin: 24px 0 0; display: grid; gap: 10px; }
+legend { font-weight: 600; margin-bottom: 8px; }
+.choice { display: flex; gap: 10px; align-items: center; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); cursor: pointer; }
+.choice span { flex: 1; }
+label.field { display: grid; gap: 6px; font-weight: 600; font-size: 14px; margin-top: 16px; }
+label.field input { min-height: 48px; padding: 0 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--text); font: 16px var(--sans); }
+.hint-text { font-weight: 400; color: var(--muted); }
+.error { color: #b3261e; margin: 16px 0 0; }
+@media (prefers-color-scheme: dark) { .error { color: #f2b8b5; } }
+.pay { margin-top: 24px; width: 100%; justify-content: center; }
+{% endblock %}
+{% block body %}
+<main class="page">
+  <a href="{% url 'public-gallery-page' gallery.public_token %}">← Back to the gallery</a>
+  <h1>Your cart</h1>
+  {% if items %}
+    <p class="muted">{{ quantity }} photo{{ quantity|pluralize }} from {{ event.title }}. Each is the full, original file: {{ unit.UGX }} or {{ unit.USD }}.</p>
+    <div class="items">
+      {% for photo in items %}
+      <div class="item">
+        <img src="{{ photo.thumb.url }}" width="{{ photo.thumb.width }}" height="{{ photo.thumb.height }}" alt="Photo in your cart" loading="lazy">
+        <form method="post" action="{% url 'shop-cart-remove' gallery.public_token %}">
+          <input type="hidden" name="photo" value="{{ photo.id }}">
+          <button type="submit" aria-label="Remove this photo">×</button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="summary"><span class="muted">Total</span><strong>{{ totals.UGX }} <span class="muted">or {{ totals.USD }}</span></strong></div>
+
+    <form method="post" action="{% url 'shop-checkout' gallery.public_token %}" data-checkout>
+      {% csrf_token %}
+      <fieldset>
+        <legend>How would you like to pay?</legend>
+        <label class="choice"><input type="radio" name="currency" value="UGX"{% if form.currency != "USD" %} checked{% endif %}><span>Mobile money (MTN or Airtel)</span><strong>{{ totals.UGX }}</strong></label>
+        <label class="choice"><input type="radio" name="currency" value="USD"{% if form.currency == "USD" %} checked{% endif %}><span>Card (Visa, Mastercard)</span><strong>{{ totals.USD }}</strong></label>
+      </fieldset>
+      <label class="field" data-phone>Mobile money number <span class="hint-text">You'll approve the payment on this phone.</span>
+        <input name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="0772 123 456" value="{{ form.phone|default:'' }}">
+      </label>
+      <label class="field">Email <span class="hint-text">We'll send your download link here.</span>
+        <input name="email" type="email" autocomplete="email" required value="{{ form.email|default:'' }}">
+      </label>
+      {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+      <button class="btn pay" type="submit">Pay and download</button>
+    </form>
+  {% else %}
+    <p class="muted">Your cart is empty. Open a photo and choose "Add to cart", or buy the whole gallery.</p>
+    {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+  {% endif %}
+</main>
+<script>
+(() => {
+  // The phone number only matters for mobile money.
+  const form = document.querySelector("[data-checkout]");
+  if (!form) return;
+  const phone = form.querySelector("[data-phone]");
+  const sync = () => { phone.hidden = form.currency.value === "USD"; };
+  form.addEventListener("change", sync);
+  sync();
+})();
+</script>
+{% endblock %}

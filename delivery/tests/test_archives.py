@@ -4,11 +4,8 @@ import datetime
 import io
 import os
 import zipfile
-from urllib.parse import parse_qs, urlparse
 
 import pytest
-from django.test import Client
-from django.urls import reverse
 from django.utils import timezone
 
 from assets.models import Photo
@@ -18,6 +15,8 @@ from delivery.archive import Entry, unique_names, write_archive
 from delivery.models import DownloadJob
 from galleries.models import Gallery
 from galleries.tests.factories import EventFactory, GalleryFactory
+from shop.models import Order
+from shop.tests.factories import make_order
 
 pytestmark = pytest.mark.django_db
 MIB = 1024 * 1024
@@ -97,104 +96,89 @@ class TestWriteArchive:
 
 
 class TestRequestArchive:
-    def test_visitors_share_one_job(self, storage, published, django_capture_on_commit_callbacks):
-        stored_photo(published, storage)
+    def test_reasking_reuses_the_live_job(
+        self, storage, published, django_capture_on_commit_callbacks
+    ):
+        order = make_order(published, [stored_photo(published, storage)])
 
         with django_capture_on_commit_callbacks(execute=True):
-            first = services.request_archive(published)
-        second = services.request_archive(published)
+            first = services.request_archive(order)
+        second = services.request_archive(order)
 
         assert first.pk == second.pk
         assert DownloadJob.objects.count() == 1
 
-    def test_new_photo_means_a_new_archive(
+    def test_builds_a_zip_of_the_ordered_originals_only(
         self, storage, published, django_capture_on_commit_callbacks
     ):
-        stored_photo(published, storage)
-        with django_capture_on_commit_callbacks(execute=True):
-            first = services.request_archive(published)
-        stored_photo(published, storage)
+        bought = stored_photo(published, storage, b"first", original_filename="IMG_2.jpg")
+        stored_photo(published, storage, b"not bought", original_filename="IMG_3.jpg")
+        order = make_order(published, [bought])
 
         with django_capture_on_commit_callbacks(execute=True):
-            second = services.request_archive(published)
-
-        assert second.pk != first.pk
-        assert second.photo_count == 2
-
-    def test_builds_a_zip_of_web_jpegs(
-        self, storage, published, django_capture_on_commit_callbacks
-    ):
-        stored_photo(published, storage, b"first", original_filename="IMG_1.CR3")
-        stored_photo(published, storage, b"second", original_filename="IMG_1.cr3")
-
-        with django_capture_on_commit_callbacks(execute=True):
-            job = services.request_archive(published)
+            job = services.request_archive(order)
 
         job.refresh_from_db()
         assert job.status == DownloadJob.Status.READY
-        assert job.expires_at > timezone.now()
         archive = read_zip(storage, job.archive_key)
-        assert archive.namelist() == ["IMG_1.jpg", "IMG_1 (2).jpg"]
-        assert archive.read("IMG_1 (2).jpg") == b"second"
+        assert archive.namelist() == ["IMG_2.jpg"]
+        assert archive.read("IMG_2.jpg") == b"first!"  # the original, not the web JPEG
 
-    def test_original_policy_packs_originals(
-        self, storage, published, django_capture_on_commit_callbacks
-    ):
-        published.download_policy = Gallery.DownloadPolicy.ORIGINAL
-        published.save()
-        stored_photo(published, storage, b"raw", original_filename="DSC_9.jpg")
+    def test_unpaid_order_is_refused(self, storage, published):
+        order = make_order(
+            published, [stored_photo(published, storage)], status=Order.Status.PENDING
+        )
 
-        with django_capture_on_commit_callbacks(execute=True):
-            job = services.request_archive(published)
+        with pytest.raises(services.ArchiveUnavailable, match="hasn't been paid"):
+            services.request_archive(order)
 
-        job.refresh_from_db()
-        assert read_zip(storage, job.archive_key).read("DSC_9.jpg") == b"raw!"
+    def test_order_whose_photos_were_all_deleted_is_refused(self, storage, published):
+        photo = stored_photo(published, storage)
+        order = make_order(published, [photo])
+        photo.delete()
 
-    def test_disabled_downloads_are_refused(self, published):
-        published.download_policy = Gallery.DownloadPolicy.DISABLED
-        published.save()
+        with pytest.raises(services.ArchiveUnavailable, match="available any more"):
+            services.request_archive(order)
 
-        with pytest.raises(services.ArchiveUnavailable, match="turned off"):
-            services.request_archive(published)
-
-    def test_empty_gallery_is_refused(self, published):
-        with pytest.raises(services.ArchiveUnavailable, match="no photos"):
-            services.request_archive(published)
-
-    def test_oversized_gallery_is_refused(self, storage, published, settings):
+    def test_oversized_order_is_refused(self, storage, published, settings):
         settings.DELIVERY = {**settings.DELIVERY, "MAX_ARCHIVE_BYTES": 5}
-        stored_photo(published, storage, b"too big")
+        order = make_order(published, [stored_photo(published, storage, b"too big")])
 
         with pytest.raises(services.ArchiveUnavailable, match="too large"):
-            services.request_archive(published)
+            services.request_archive(order)
 
     def test_a_failed_build_is_recorded_and_not_reused(
         self, storage, published, django_capture_on_commit_callbacks
     ):
         photo = stored_photo(published, storage)
-        storage.delete([photo.variants["web"]["key"]])  # the source vanished
+        order = make_order(published, [photo])
+        storage.delete([photo.original_key])  # the source vanished
 
-        # robust on_commit: the visitor gets the status page, not a 500; the error is logged.
+        # robust on_commit: the buyer gets the status page, not a 500; the error is logged.
         with django_capture_on_commit_callbacks(execute=True):
-            services.request_archive(published)
+            services.request_archive(order)
 
         job = DownloadJob.objects.get()
         assert job.status == DownloadJob.Status.FAILED
         assert "couldn't prepare" in job.failure_reason
-        storage.put_bytes(photo.variants["web"]["key"], b"back", "image/jpeg")
+        storage.put_bytes(photo.original_key, b"back", "image/jpeg")
         with django_capture_on_commit_callbacks(execute=True):
-            retry = services.request_archive(published)
+            retry = services.request_archive(order)
         assert retry.pk != job.pk
 
 
 class TestExpiry:
+    def build(self, storage, published, capture) -> DownloadJob:
+        order = make_order(published, [stored_photo(published, storage)])
+        with capture(execute=True):
+            job = services.request_archive(order)
+        job.refresh_from_db()
+        return job
+
     def test_expired_archives_are_deleted(
         self, storage, published, django_capture_on_commit_callbacks
     ):
-        stored_photo(published, storage)
-        with django_capture_on_commit_callbacks(execute=True):
-            job = services.request_archive(published)
-        job.refresh_from_db()
+        job = self.build(storage, published, django_capture_on_commit_callbacks)
 
         expired = services.expire_archives(now=job.expires_at + datetime.timedelta(seconds=1))
 
@@ -204,8 +188,14 @@ class TestExpiry:
         assert storage.object_size(job.archive_key) is None
 
     def test_stuck_jobs_fail(self, published, settings):
+        order = make_order(published, [])
         job = DownloadJob.objects.create(
-            gallery=published, policy="web", fingerprint="x", photo_count=1, expected_bytes=1
+            gallery=published,
+            order=order,
+            policy="original",
+            fingerprint="x",
+            photo_count=1,
+            expected_bytes=1,
         )
         later = timezone.now() + datetime.timedelta(
             seconds=settings.DELIVERY["STUCK_AFTER_SECONDS"] + 1
@@ -216,148 +206,12 @@ class TestExpiry:
         job.refresh_from_db()
         assert job.status == DownloadJob.Status.FAILED
 
-    def test_deleting_the_gallery_deletes_its_archive(
+    def test_deleting_the_gallery_deletes_its_archives(
         self, storage, published, django_capture_on_commit_callbacks
     ):
-        stored_photo(published, storage)
-        with django_capture_on_commit_callbacks(execute=True):
-            job = services.request_archive(published)
+        job = self.build(storage, published, django_capture_on_commit_callbacks)
 
         with django_capture_on_commit_callbacks(execute=True):
             published.delete()
 
         assert storage.object_size(job.archive_key) is None
-
-
-class TestCustomerFlow:
-    def request_url(self, gallery: Gallery) -> str:
-        return reverse("public-archive-request", args=[gallery.public_token])
-
-    def test_gallery_page_offers_download_all_with_its_size(
-        self, client: Client, storage, published
-    ):
-        stored_photo(published, storage, b"x" * 2048)
-
-        html = client.get(
-            reverse("public-gallery-page", args=[published.public_token])
-        ).content.decode()
-
-        assert "Download all · 2.0\xa0KB" in html
-
-    def test_viewing_only_gallery_has_no_download_all(self, client: Client, storage, published):
-        published.download_policy = Gallery.DownloadPolicy.DISABLED
-        published.save()
-        stored_photo(published, storage)
-
-        html = client.get(
-            reverse("public-gallery-page", args=[published.public_token])
-        ).content.decode()
-
-        assert "Download all" not in html
-
-    def test_request_then_status_then_file(
-        self, client: Client, storage, published, django_capture_on_commit_callbacks
-    ):
-        stored_photo(published, storage)
-
-        with django_capture_on_commit_callbacks(execute=True):
-            response = client.post(self.request_url(published))
-
-        assert response.status_code == 303
-        status_page = client.get(response["Location"])
-        html = status_page.content.decode()
-        assert "Your download is ready" in html
-        assert status_page["X-Robots-Tag"] == "noindex, nofollow"
-        job = DownloadJob.objects.get()
-        file_response = client.get(
-            reverse("public-archive-file", args=[published.public_token, job.pk])
-        )
-        assert file_response.status_code == 302
-        disposition = parse_qs(urlparse(file_response["Location"]).query)[
-            "response-content-disposition"
-        ][0]
-        assert 'filename="Amina & Daniel - ' in disposition
-
-    def test_pending_page_refreshes_itself(self, client: Client, published):
-        job = DownloadJob.objects.create(
-            gallery=published, policy="web", fingerprint="x", photo_count=3, expected_bytes=10
-        )
-
-        html = client.get(
-            reverse("public-archive-status", args=[published.public_token, job.pk])
-        ).content.decode()
-
-        assert 'http-equiv="refresh"' in html
-        assert "Preparing your download" in html
-
-    def test_archive_built_under_old_settings_is_not_served(
-        self, client: Client, storage, published, django_capture_on_commit_callbacks
-    ):
-        published.download_policy = Gallery.DownloadPolicy.ORIGINAL
-        published.save()
-        stored_photo(published, storage)
-        with django_capture_on_commit_callbacks(execute=True):
-            client.post(self.request_url(published))
-        job = DownloadJob.objects.get()
-        published.download_policy = Gallery.DownloadPolicy.WEB
-        published.save()
-
-        file_response = client.get(
-            reverse("public-archive-file", args=[published.public_token, job.pk])
-        )
-        status_html = client.get(file_response["Location"]).content.decode()
-
-        assert file_response["Location"].endswith(f"/archive/{job.pk}/")
-        assert "Download settings changed" in status_html
-
-    def test_locked_gallery_sends_visitor_to_password_page(self, client: Client, published):
-        published.set_access_password("secret-pass")
-        published.save()
-
-        response = client.post(self.request_url(published))
-
-        assert response.status_code == 302
-        assert response["Location"] == reverse("public-gallery-page", args=[published.public_token])
-
-    def test_disabled_downloads_explain_why(self, client: Client, published):
-        published.download_policy = Gallery.DownloadPolicy.DISABLED
-        published.save()
-
-        response = client.post(self.request_url(published))
-
-        assert response.status_code == 409
-        assert "turned off" in response.content.decode()
-
-    def test_requests_are_throttled(self, client: Client, published, strict_throttle):
-        for _ in range(2):
-            client.post(self.request_url(published))
-
-        response = client.post(self.request_url(published))
-
-        assert response.status_code == 429
-
-    def test_job_from_another_gallery_is_404(self, client: Client, published):
-        other = GalleryFactory(status=Gallery.Status.PUBLISHED)
-        job = DownloadJob.objects.create(
-            gallery=other, policy="web", fingerprint="x", photo_count=1, expected_bytes=1
-        )
-
-        response = client.get(
-            reverse("public-archive-status", args=[published.public_token, job.pk])
-        )
-
-        assert response.status_code == 404
-
-    def test_unpublished_gallery_blocks_archive_files(
-        self, client: Client, storage, published, django_capture_on_commit_callbacks
-    ):
-        stored_photo(published, storage)
-        with django_capture_on_commit_callbacks(execute=True):
-            client.post(self.request_url(published))
-        job = DownloadJob.objects.get()
-        published.status = Gallery.Status.DRAFT
-        published.save()
-
-        response = client.get(reverse("public-archive-file", args=[published.public_token, job.pk]))
-
-        assert response.status_code == 404

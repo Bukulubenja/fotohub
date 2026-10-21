@@ -36,6 +36,8 @@ def _call(operation: Callable, *args, **kwargs):
         return operation(*args, **kwargs)
     except services.QuotaExceeded as exc:
         raise UploadConflict(str(exc), code="quota_exceeded") from exc
+    except services.SubscriptionInactive as exc:
+        raise UploadConflict(str(exc), code="subscription_inactive") from exc
     except services.UploadError as exc:
         raise UploadConflict(str(exc)) from exc
     except services.StorageUnavailable as exc:

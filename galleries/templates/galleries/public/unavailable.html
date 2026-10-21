@@ -3,7 +3,10 @@
 {% block body %}
 <main class="center">
   <div class="card">
-    {% if expired %}
+    {% if suspended %}
+    <h1>This gallery is temporarily unavailable</h1>
+    <p class="muted">Contact your photographer. The photos are safe and can be brought back.</p>
+    {% elif expired %}
     <h1>This gallery has expired</h1>
     <p class="muted">The photographer set this link to stop working after a date. Contact them if you still need the photos.</p>
     {% else %}

@@ -25,10 +25,12 @@ from rest_framework.throttling import BaseThrottle, ScopedRateThrottle
 
 from assets.gallery_media import cover_image, download_url, gallery_photos, ready_photos
 from assets.models import Photo
-from delivery.services import estimate_bytes
+from billing import services as billing
 from galleries import access, sharing
 from galleries.models import Gallery
 from galleries.views import NOINDEX, GalleryUnlockThrottle
+from shop import cart
+from shop.pricing import format_money, price
 
 WRONG_PASSWORD = "That password isn't right. Check the message from your photographer."
 TOO_MANY_TRIES = "Too many attempts. Wait a minute, then try again."
@@ -54,8 +56,9 @@ class Visit:
 
 
 class Unavailable(Exception):
-    def __init__(self, status: int) -> None:
+    def __init__(self, status: int, suspended: bool = False) -> None:
         self.status = status
+        self.suspended = suspended  # the photographer's account has lapsed (FR-29)
 
 
 def resolve(request: HttpRequest, token: str) -> Visit:
@@ -72,13 +75,14 @@ def resolve(request: HttpRequest, token: str) -> Visit:
         raise Unavailable(404)  # drafts look exactly like unknown links
     if gallery.is_expired():
         raise Unavailable(410)
+    if not billing.standing_for(gallery.event.owner).galleries_live:
+        raise Unavailable(404, suspended=True)
     return Visit(gallery, is_preview=False)
 
 
-def unavailable(request: HttpRequest, status: int) -> HttpResponse:
-    return render(
-        request, "galleries/public/unavailable.html", {"expired": status == 410}, status=status
-    )
+def unavailable(request: HttpRequest, status: int, suspended: bool = False) -> HttpResponse:
+    context = {"expired": status == 410, "suspended": suspended}
+    return render(request, "galleries/public/unavailable.html", context, status=status)
 
 
 def can_view(request: HttpRequest, visit: Visit) -> bool:
@@ -127,7 +131,7 @@ def gallery_page(request: HttpRequest, token: str) -> HttpResponse:
     try:
         visit = resolve(request, token)
     except Unavailable as exc:
-        return unavailable(request, exc.status)
+        return unavailable(request, exc.status, exc.suspended)
     if not can_view(request, visit):
         return locked(request, visit)
 
@@ -139,7 +143,9 @@ def gallery_page(request: HttpRequest, token: str) -> HttpResponse:
         "photos": gallery_photos(list(page.object_list)),
         "page": page,
         "photo_count": paginator.count,
-        "can_download": gallery.download_policy != Gallery.DownloadPolicy.DISABLED,
+        # Every photo is for sale; buyers (and the previewing owner) can download.
+        "owned": cart.owned_photo_ids(request, gallery),
+        "unit_price": format_money("UGX", price("UGX").unit_minor),
     }
     if request.GET.get("partial"):  # "Load more" fetches just the next tiles
         response = render(request, "galleries/public/_photos.html", context)
@@ -154,9 +160,12 @@ def gallery_page(request: HttpRequest, token: str) -> HttpResponse:
             "url": context["share_url"],
         }
         context["whatsapp_url"] = sharing.whatsapp_link(message)
-        if context["can_download"] and paginator.count:
-            context["archive_bytes"] = estimate_bytes(gallery)
-            context["large_bytes"] = settings.DELIVERY["LARGE_DOWNLOAD_BYTES"]
+        unsold = paginator.count - len(context["owned"])
+        context["unsold_count"] = unsold
+        context["unsold_total"] = format_money("UGX", price("UGX").total(unsold))
+        context["unsold_total_usd"] = format_money("USD", price("USD").total(unsold))
+        context["cart_count"] = cart.count(request, gallery)
+        context["cart_ids"] = cart.ids(request, gallery)
         response = render(request, "galleries/public/gallery.html", context)
     return _gzip.process_response(request, response)
 
@@ -167,7 +176,7 @@ def unlock(request: HttpRequest, token: str) -> HttpResponse:
     try:
         visit = resolve(request, token)
     except Unavailable as exc:
-        return unavailable(request, exc.status)
+        return unavailable(request, exc.status, exc.suspended)
     page = reverse("public-gallery-page", args=[token])
     if can_view(request, visit):
         return redirect(page)
@@ -182,15 +191,14 @@ def unlock(request: HttpRequest, token: str) -> HttpResponse:
 @require_GET
 @private_page
 def download_photo(request: HttpRequest, token: str, photo_id: uuid.UUID) -> HttpResponse:
-    """Check access and policy on every download (FR-25), then hand off to storage."""
+    """Originals for buyers (and the previewing owner), re-checked on every download (FR-25)."""
     try:
         visit = resolve(request, token)
     except Unavailable as exc:
-        return unavailable(request, exc.status)
+        return unavailable(request, exc.status, exc.suspended)
     if not can_view(request, visit):
         return redirect("public-gallery-page", token=token)
     photo = get_object_or_404(Photo, pk=photo_id, gallery=visit.gallery, status=Photo.Status.READY)
-    url = download_url(photo, visit.gallery.download_policy)
-    if url is None:
-        raise Http404("Downloads are turned off for this gallery.")
-    return HttpResponseRedirect(url)
+    if not visit.is_preview and str(photo.pk) not in cart.owned_photo_ids(request, visit.gallery):
+        raise Http404("Buy this photo to download it.")
+    return HttpResponseRedirect(download_url(photo, Gallery.DownloadPolicy.ORIGINAL))

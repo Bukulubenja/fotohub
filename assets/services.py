@@ -19,6 +19,7 @@ from django.utils import timezone
 from accounts.models import PhotographerProfile
 from assets.models import Photo, UploadSession
 from assets.storage import StorageError, get_storage
+from billing import services as billing
 from galleries.models import Gallery
 
 logger = logging.getLogger(__name__)
@@ -35,6 +36,10 @@ CLIENT_PART_ERRORS = {"EntityTooSmall", "InvalidPart", "InvalidPartOrder"}
 
 class UploadError(Exception):
     """The request can't be honoured in the upload's current state."""
+
+
+class SubscriptionInactive(Exception):
+    pass
 
 
 class QuotaExceeded(UploadError):
@@ -101,6 +106,11 @@ def start_upload(
 
     with transaction.atomic():
         profile = PhotographerProfile.objects.select_for_update().get(user=user)
+        if not billing.can_upload(user):
+            raise SubscriptionInactive(
+                "Your plan has ended, so uploads are paused. Renew to add photos; "
+                "your galleries stay online meanwhile."
+            )
         if not storage_usage(user, profile.storage_quota_bytes).can_fit(size_bytes):
             raise QuotaExceeded(
                 "This upload would go over your storage limit. Free up space or upgrade your plan."
