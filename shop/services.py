@@ -110,7 +110,7 @@ def refresh(order: Order) -> Order:
 
 
 def send_receipt(order: Order) -> None:
-    link = settings.SHOP["SITE_URL"].rstrip("/") + f"/orders/{order.token}/"
+    link = settings.SITE_URL.rstrip("/") + f"/orders/{order.token}/"
     title = order.gallery.event.title if order.gallery else "your gallery"
     send_mail(
         subject=f"Your photos from {title}",

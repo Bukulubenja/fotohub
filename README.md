@@ -134,6 +134,7 @@ job that has to run on time:
 `lapsed`. Galleries stay viewable for 30 more days, then customers see "temporarily
 unavailable". Photos are never deleted automatically.
 
+- **Reminders.** The hourly `send-billing-reminders` beat task emails one reminder per stage: due, grace, lapsed, and galleries hidden. It never repeats a stage, and paying resets it. WhatsApp/SMS can plug into `billing.reminders.deliver` once the aggregator is chosen.
 - **Plans** (Starter, Pro, Studio) are seeded with **placeholder prices**. Edit them in the admin once pricing is decided.
 - **Payment providers** plug in behind `billing/providers/base.py`. One webhook, `/api/v1/billing/webhooks/<provider>/`, settles both renewals and photo orders.
 - **Only the `fake` provider exists so far.** Production settings refuse to start with it.

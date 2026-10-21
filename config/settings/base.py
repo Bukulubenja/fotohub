@@ -180,8 +180,9 @@ BILLING = {
 SHOP = {
     "PRICE_USD_CENTS": env.int("SHOP_PRICE_USD_CENTS", default=24),
     "PRICE_UGX": env.int("SHOP_PRICE_UGX", default=900),
-    "SITE_URL": env("SITE_URL", default="http://127.0.0.1:8000"),  # links in receipt emails
 }
+# Public base URL, for links in emails (receipts, reminders).
+SITE_URL = env("SITE_URL", default="http://127.0.0.1:8000")
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="FotoHub <photos@fotohub.ug>")
 # Django 6.1 MAILERS (EMAIL_BACKEND is deprecated). Console in development; production sets
 # MAILER_BACKEND to SMTP or a provider backend, with its OPTIONS, at deployment (phase 4).
@@ -202,6 +203,10 @@ CELERY_BEAT_SCHEDULE = {
     "expire-stale-uploads": {
         "task": "assets.tasks.expire_stale_uploads",
         "schedule": 15 * 60,
+    },
+    "send-billing-reminders": {
+        "task": "billing.tasks.send_reminders",
+        "schedule": 60 * 60,  # idempotent: each stage's reminder is sent once
     },
     "expire-archives": {
         "task": "delivery.tasks.expire_archives",
