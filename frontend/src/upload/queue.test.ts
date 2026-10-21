@@ -1,7 +1,7 @@
 import { ApiError } from '../api/client'
 import type { UploadApi } from '../api/endpoints'
 import type { StartedUpload } from '../api/types'
-import { UploadQueue } from './queue'
+import { DEFAULT_RETRY_DELAYS_MS, UploadQueue } from './queue'
 import { TransportError, type PutRequest } from './transport'
 
 const MiB = 1024 * 1024
@@ -184,6 +184,36 @@ test('gives up after the last retry delay', async () => {
 
   expect(queue.getSnapshot()[0].status).toBe('failed')
   expect(down).toHaveBeenCalledTimes(3)
+})
+
+test('time offline does not use up retries', async () => {
+  let online = false
+  let calls = 0
+  const transport = vi.fn(async () => {
+    calls += 1
+    if (calls <= 5) throw new TransportError(0, 'Connection lost while uploading.')
+  })
+  const network = {
+    isOnline: () => online,
+    waitForOnline: vi.fn(async () => {
+      if (calls >= 5) online = true // the connection comes back after a long outage
+    }),
+  }
+  const queue = new UploadQueue({
+    gallery: 'g1', api: fakeApi(), transport, sleep: noSleep, retryDelaysMs: [1], network,
+  })
+
+  queue.add([{ file: file('a.jpg', 10), contentType: 'image/jpeg' }])
+  await settled(queue)
+
+  expect(queue.getSnapshot()[0].status).toBe('done')
+  expect(transport).toHaveBeenCalledTimes(6) // 5 failures while offline, none counted
+  expect(network.waitForOnline).toHaveBeenCalled()
+})
+
+test('default schedule keeps retrying for several minutes', () => {
+  const total = DEFAULT_RETRY_DELAYS_MS.reduce((sum, ms) => sum + ms, 0)
+  expect(total).toBeGreaterThanOrEqual(5 * 60_000)
 })
 
 test('retrying a failed file reuses its server session instead of reserving again', async () => {

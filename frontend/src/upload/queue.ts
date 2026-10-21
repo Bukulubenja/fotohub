@@ -40,9 +40,18 @@ export interface QueueOptions {
   retryDelaysMs?: number[]
   maxPartsPerSign?: number
   sleep?: (ms: number, signal: AbortSignal) => Promise<void>
+  network?: Network
 }
 
-const DEFAULT_RETRY_DELAYS_MS = [1_000, 3_000, 10_000, 30_000]
+/** Whether the browser thinks it's online, and a way to wait until it is. */
+export interface Network {
+  isOnline(): boolean
+  waitForOnline(signal: AbortSignal): Promise<void>
+}
+
+// About 5.5 minutes in all. The phase 2 drill from Kampala found 3% of files still failing
+// after the old 44 s schedule; most dropouts there last a minute or two.
+export const DEFAULT_RETRY_DELAYS_MS = [1_000, 3_000, 10_000, 30_000, 60_000, 120_000, 120_000]
 const CANCELLED = () => new DOMException('Upload cancelled', 'AbortError')
 
 function abortableSleep(ms: number, signal: AbortSignal): Promise<void> {
@@ -54,6 +63,25 @@ function abortableSleep(ms: number, signal: AbortSignal): Promise<void> {
       reject(CANCELLED())
     }, { once: true })
   })
+}
+
+export const browserNetwork: Network = {
+  isOnline: () => typeof navigator === 'undefined' || navigator.onLine !== false,
+  waitForOnline: (signal) =>
+    new Promise((resolve, reject) => {
+      if (signal.aborted) return reject(CANCELLED())
+      const done = () => {
+        window.removeEventListener('online', done)
+        signal.removeEventListener('abort', cancel)
+        resolve()
+      }
+      const cancel = () => {
+        window.removeEventListener('online', done)
+        reject(CANCELLED())
+      }
+      window.addEventListener('online', done)
+      signal.addEventListener('abort', cancel, { once: true })
+    }),
 }
 
 function isAbort(error: unknown): boolean {
@@ -98,6 +126,7 @@ export class UploadQueue {
       retryDelaysMs: DEFAULT_RETRY_DELAYS_MS,
       maxPartsPerSign: 100,
       sleep: abortableSleep,
+      network: browserNetwork,
       ...options,
     }
   }
@@ -193,13 +222,21 @@ export class UploadQueue {
   }
 
   private async withRetry<T>(signal: AbortSignal, step: () => Promise<T>): Promise<T> {
-    for (let attempt = 0; ; attempt += 1) {
+    let attempt = 0
+    for (;;) {
       try {
         return await step()
       } catch (error) {
-        const delay = this.opts.retryDelaysMs[attempt]
         if (signal.aborted) throw CANCELLED()
-        if (!isRetryable(error) || delay === undefined) throw error
+        if (!isRetryable(error)) throw error
+        if (!this.opts.network.isOnline()) {
+          // Offline time doesn't count against the file: wait for the connection, then retry.
+          await this.opts.network.waitForOnline(signal)
+          continue
+        }
+        const delay = this.opts.retryDelaysMs[attempt]
+        if (delay === undefined) throw error
+        attempt += 1
         await this.opts.sleep(delay, signal)
       }
     }

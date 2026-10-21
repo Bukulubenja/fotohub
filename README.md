@@ -30,7 +30,7 @@ npm run dev          # http://localhost:5173, with Django on :8000
 npm test && npm run typecheck && npm run lint && npm run build
 ```
 
-`src/upload/queue.ts` is the upload engine: 3 files at a time, per-file retries with backoff,
+`src/upload/queue.ts` is the upload engine: 3 files at a time, per-file retries with backoff for about 5.5 minutes (waiting out offline spells without using them up),
 resume from the parts already in the bucket, and a retry that reuses the existing server
 session so quota isn't reserved twice. Uppy isn't used: v6 drives S3 itself and wants the
 server to sign arbitrary requests, which conflicts with the server-owned lifecycle above.
@@ -184,7 +184,7 @@ gets `AccessDenied`; set the two rules in the R2 dashboard instead and rerun the
 
 The gate: a 1,000-photo event uploads over a Kampala connection, with retries working.
 `scripts/upload_drill.py` drives the real API and bucket the way the dashboard does (3 files at
-once, the same 1/3/10/30 s retries, resume from stored parts), then presses "retry failed" once
+once, the same retries: 1/3/10/30/60/120/120 s, resume from stored parts), then presses "retry failed" once
 and waits for processing. It uses the standard library only; pyvips is needed just for
 `--synthetic`.
 

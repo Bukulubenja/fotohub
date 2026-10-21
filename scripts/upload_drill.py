@@ -47,7 +47,7 @@ CONTENT_TYPES = {
 }
 # Parts aren't signed with a type. Without one, urllib sends the body as a form post.
 PART_HEADERS = {"Content-Type": "application/octet-stream"}
-DEFAULT_RETRY_DELAYS = "1,3,10,30"  # seconds; same as the dashboard (queue.ts)
+DEFAULT_RETRY_DELAYS = "1,3,10,30,60,120,120"  # seconds; same as the dashboard (queue.ts)
 API_TIMEOUT_SECONDS = 60
 PUT_TIMEOUT_SECONDS = 5 * 60  # an 8 MiB part on a slow 3G link, as in transport.ts
 READ_BLOCK_BYTES = 64 * 1024
