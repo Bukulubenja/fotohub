@@ -108,6 +108,17 @@ class TestGalleryPage:
 
         assert f"{first.pk}/cover.jpg" in html
 
+    def test_photos_follow_filename_order_ignoring_case(self, client: Client, published):
+        third = ready_photo(published, original_filename="IMG_0003.jpg")
+        first = ready_photo(published, original_filename="IMG_0001.jpg")
+        second = ready_photo(published, original_filename="img_0002.JPG")
+
+        html = client.get(page_url(published)).content.decode()
+
+        positions = [html.index(f"{photo.pk}/thumb.webp") for photo in (first, second, third)]
+        assert positions == sorted(positions)
+        assert f"{first.pk}/cover.jpg" in html  # default cover is the first in that order
+
     def test_titles_are_escaped(self, client: Client, published):
         published.event.title = "<script>alert(1)</script>"
         published.event.save()

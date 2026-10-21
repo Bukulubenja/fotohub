@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import PurePath
 
 from django.db.models import QuerySet
+from django.db.models.functions import Lower
 
 from assets.models import Photo
 from assets.storage import get_storage
@@ -30,8 +31,13 @@ class GalleryPhoto:
 
 
 def ready_photos(gallery: Gallery) -> QuerySet[Photo]:
+    """Customer order: by filename, which follows the camera's shooting sequence.
+
+    Case-insensitive (cameras and editing exports disagree on case); the id keeps pages stable
+    when two files share a name. Grid, pages, default cover and ZIP all use this order.
+    """
     return Photo.objects.filter(gallery=gallery, status=Photo.Status.READY).order_by(
-        "created_at", "id"
+        Lower("original_filename"), "id"
     )
 
 

@@ -92,6 +92,7 @@ cheap phone, and WhatsApp link previews need Open Graph tags in the HTML.
 | `POST /g/<token>/archive/` | "Download all": finds or creates the shared ZIP job, then shows its status page |
 | `GET /g/<token>/archive/<job>/` and `…/file/` | Status page (refreshes itself), then the ZIP |
 
+- Photos appear in filename order, ignoring case. That follows the camera's shooting sequence, and the ZIP uses the same order.
 - Unknown links and drafts both return the same 404 page, so a draft can't be detected. Expired galleries get a 410 page.
 - Every response sends `noindex`, `private, no-store`, and `Referrer-Policy: no-referrer`.
 - The photographer, signed in to the dashboard, can preview a gallery in any state.
@@ -102,7 +103,8 @@ cheap phone, and WhatsApp link previews need Open Graph tags in the HTML.
   - `galleries/tests/test_sharing_and_budget.py` enforces these rules.
 - **Cacheable image links.** Gallery image URLs are signed for a 3-hour window
   (`GALLERY_MEDIA`), so everyone gets the same URLs and browsers can cache them. Unpublishing
-  doesn't cancel links already issued; they can stay valid for up to 6 hours.
+  doesn't cancel links already issued; they can stay valid for up to 6 hours. (Accepted
+  trade-off: phones reuse cached images instead of downloading them again.)
 - **Share previews.** For a password-protected gallery, the preview shows no cover photo.
 - **ZIP archives** are shared per gallery, download setting and set of photos. They're built
   into R2 by a worker without holding the archive in memory, and expire after 24 hours (the
