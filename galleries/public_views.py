@@ -42,7 +42,10 @@ def private_page(view: Callable[..., HttpResponse]) -> Callable[..., HttpRespons
         response = view(request, *args, **kwargs)
         response["X-Robots-Tag"] = NOINDEX
         response["Cache-Control"] = "private, no-store"
-        response["Referrer-Policy"] = "no-referrer"  # the token is in the URL
+        # The token is in the URL, so no referrer leaves the site. Not "no-referrer": with it,
+        # browsers send "Origin: null" on form posts and CSRF rejects checkout and unlock
+        # (found on the 2026-10-24 phone test; the test client sends no Origin).
+        response["Referrer-Policy"] = "same-origin"
         patch_vary_headers(response, ["Cookie"])
         return response
 

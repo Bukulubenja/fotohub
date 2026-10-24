@@ -96,7 +96,7 @@ cheap phone, and WhatsApp link previews need Open Graph tags in the HTML.
 
 - Photos appear in filename order, ignoring case. That follows the camera's shooting sequence, and the ZIP uses the same order.
 - Unknown links and drafts both return the same 404 page, so a draft can't be detected. Expired galleries get a 410 page.
-- Every response sends `noindex`, `private, no-store`, and `Referrer-Policy: no-referrer`.
+- Every response sends `noindex`, `private, no-store`, and `Referrer-Policy: same-origin`. The private link never reaches other sites. `no-referrer` would make browsers send `Origin: null` on form posts, which breaks CSRF.
 - The photographer, signed in to the dashboard, can preview a gallery in any state.
 - **Data budget.** The first screen must stay under 1 MB:
   - no web fonts and no external CSS or JS

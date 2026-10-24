@@ -125,3 +125,14 @@ class TestDataBudget:
         images = re.findall(r"<img [^>]*>", html)
         assert images
         assert all('width="' in tag and 'height="' in tag for tag in images if "src=" in tag)
+
+
+def test_hidden_buttons_stay_hidden(client: Client, published):
+    """Regression (phone test 2026-10-24): .lb-btn's display rule un-hid "Download" on
+    photos the visitor hadn't bought. [hidden] must beat every author display rule."""
+    ready_photo(published)
+
+    html = page(client, published).content.decode()
+
+    assert "[hidden] { display: none !important; }" in html
+    assert re.search(r'<a class="lb-btn" data-download href="#" hidden>', html)

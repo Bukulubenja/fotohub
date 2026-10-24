@@ -138,8 +138,8 @@ dialog.lightbox::backdrop { background: #0b0b0a; }
       .then((html) => {
         const fragment = document.createElement("template");
         fragment.innerHTML = html;
-        const marker = fragment.content.querySelector("[data-next]");
-        const nextPage = marker ? marker.dataset.next : "";
+        const marker = fragment.content.querySelector("[data-next-page]");
+        const nextPage = marker ? marker.dataset.nextPage : "";
         if (marker) marker.remove();
         grid.append(fragment.content);
         if (nextPage) moreLink.href = nextPage;

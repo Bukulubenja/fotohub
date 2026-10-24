@@ -3,7 +3,8 @@ from .base import env
 
 DEBUG = True
 SECRET_KEY = env("DJANGO_SECRET_KEY", default="dev-only-insecure-key")
-ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+# Add your LAN IP (DJANGO_ALLOWED_HOSTS=192.168.1.136) to open the dev server from a phone.
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", *env.list("DJANGO_ALLOWED_HOSTS", default=[])]
 
 # No Redis locally: run image processing inline unless a broker is configured.
 CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER", default=True)

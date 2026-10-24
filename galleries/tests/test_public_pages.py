@@ -4,6 +4,7 @@ Presigned URLs are signed locally, so these tests need no bucket.
 """
 
 import datetime
+import re
 from urllib.parse import parse_qs, urlparse
 
 import pytest
@@ -62,7 +63,7 @@ class TestGalleryPage:
         assert f"{photo.pk}/thumb.webp" in html
         assert response["X-Robots-Tag"] == "noindex, nofollow"
         assert response["Cache-Control"] == "private, no-store"
-        assert response["Referrer-Policy"] == "no-referrer"
+        assert response["Referrer-Policy"] == "same-origin"
         assert "Cookie" in response["Vary"]
 
     def test_page_is_compressed_for_clients_that_accept_it(self, client: Client, published):
@@ -205,6 +206,21 @@ class TestPassword:
 
         assert "og:image" not in html
 
+    def test_unlock_works_like_a_real_browser_form(self, locked_gallery):
+        """A browser posts with the CSRF cookie, the form token and its Origin header."""
+        browser = Client(enforce_csrf_checks=True)
+        page = browser.get(page_url(locked_gallery))
+        token = re.search(r'name="csrfmiddlewaretoken" value="([^"]+)"', page.content.decode())
+
+        response = browser.post(
+            unlock_url(locked_gallery),
+            {"password": PASSWORD, "csrfmiddlewaretoken": token.group(1)},
+            headers={"origin": "http://testserver"},
+        )
+
+        assert page["Referrer-Policy"] == "same-origin"  # "no-referrer" makes Origin "null"
+        assert response.status_code == 303
+
     def test_unlock_requires_csrf_token(self, locked_gallery):
         strict = Client(enforce_csrf_checks=True)
 
@@ -275,7 +291,7 @@ class TestPagination:
 
         assert "<html" not in html
         assert str(photos[2].pk) in html
-        assert 'data-next=""' in html
+        assert 'data-next-page=""' in html
         assert 'alt="Photo 3 of 3"' in html
 
 

@@ -18,6 +18,8 @@
   :root { --bg: #121110; --surface: #1c1b19; --text: #f1eee8; --muted: #a39d93; --line: #2e2c28; }
 }
 * { box-sizing: border-box; }
+/* Author display rules (e.g. .btn's inline-flex) would otherwise unhide [hidden] elements. */
+[hidden] { display: none !important; }
 body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 var(--sans); }
 a { color: inherit; }
 .wrap { max-width: 1240px; margin: 0 auto; padding: 0 16px; }
