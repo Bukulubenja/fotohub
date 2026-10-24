@@ -1,0 +1,4 @@
+-r base.txt
+gunicorn>=23
+whitenoise>=6.8
+sentry-sdk[django,celery]>=2.20

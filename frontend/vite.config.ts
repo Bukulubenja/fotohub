@@ -6,7 +6,9 @@ import { defineConfig } from 'vite'
 // Django session cookie and CSRF checks work without any CORS setup.
 const DJANGO = process.env.DJANGO_ORIGIN ?? 'http://127.0.0.1:8000'
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
+  // Built assets are collected by Django as static files under /static/dashboard/.
+  base: command === 'build' ? '/static/dashboard/' : '/',
   plugins: [react()],
   server: {
     // /g/ is the customer gallery: share links and previews then work from the dashboard.
@@ -17,4 +19,4 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
   },
-})
+}))

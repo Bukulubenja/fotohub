@@ -81,4 +81,54 @@ jobs:
           cache: pip
           cache-dependency-path: requirements/*.txt
       - run: pip install -r requirements/dev.txt
-      - run: pytest --cov --cov-report=term-missing
+      - name: Postgres 17 client (backup/restore round trip)
+        if: matrix.database == 'postgres'
+        run: |
+          sudo apt-get install -y postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y postgresql-client-17
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+      - run: pytest --cov --cov-report=term-missing -rs
+
+  docker:
+    # The production image builds, boots against Postgres + Redis and reports healthy.
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: fotohub
+          POSTGRES_PASSWORD: fotohub
+          POSTGRES_DB: fotohub
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U fotohub"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t fotohub:ci .
+      - name: Boot the image and check it
+        env:
+          APP_ENV: >-
+            -e DJANGO_SECRET_KEY=ci-only-secret-key-that-is-long-enough-for-the-deploy-checks-123
+            -e DJANGO_ALLOWED_HOSTS=localhost
+            -e DATABASE_URL=postgres://fotohub:fotohub@localhost:5432/fotohub
+            -e CACHE_URL=redis://localhost:6379/1
+            -e CELERY_BROKER_URL=redis://localhost:6379/0
+            -e BILLING_PROVIDER=flutterwave -e FLW_SECRET_KEY=x -e FLW_SECRET_HASH=x
+            -e STORAGE_ACCESS_KEY_ID=x -e STORAGE_SECRET_ACCESS_KEY=x
+        run: |
+          docker run --rm --network host $APP_ENV fotohub:ci python manage.py migrate --noinput
+          docker run --rm --network host $APP_ENV fotohub:ci python manage.py check --deploy
+          docker run --rm --network host $APP_ENV fotohub:ci pg_dump --version
+          docker run -d --name web --network host $APP_ENV fotohub:ci
+          for i in $(seq 1 30); do curl -fsS http://localhost:8000/healthz/ && break; sleep 2; done
+          curl -fsS http://localhost:8000/healthz/ | grep '"database": "ok"'
+          curl -fsS -H "X-Forwarded-Proto: https" http://localhost:8000/ | grep -q '<div id="root">'
+          curl -fsS -H "X-Forwarded-Proto: https" http://localhost:8000/static/admin/css/base.css > /dev/null
+          docker logs web

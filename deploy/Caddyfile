@@ -1,0 +1,12 @@
+# HTTPS (automatic Let's Encrypt) in front of gunicorn. SITE_ADDRESS is the domain, or
+# <server-ip>.sslip.io until FotoHub has its own domain.
+{$SITE_ADDRESS} {
+	# Caddy sets X-Forwarded-Proto and overwrites X-Forwarded-For with the client's address,
+	# which Django trusts as exactly one proxy (DJANGO_NUM_PROXIES=1).
+	reverse_proxy web:8000
+
+	header {
+		-Server
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+	}
+}

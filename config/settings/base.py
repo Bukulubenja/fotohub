@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import environ
+from celery.schedules import crontab
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -25,6 +26,7 @@ INSTALLED_APPS = [
     "delivery",
     "billing",
     "shop",
+    "ops",
 ]
 
 MIDDLEWARE = [
@@ -80,6 +82,9 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+# The photographer dashboard's Vite build (`npm run build`), served at the site root.
+DASHBOARD_BUILD = BASE_DIR / "frontend" / "dist"
+STATICFILES_DIRS = [("dashboard", DASHBOARD_BUILD)] if DASHBOARD_BUILD.is_dir() else []
 
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
@@ -202,6 +207,9 @@ MAILERS = {
     }
 }
 
+# Nightly database backups to object storage (ops app).
+BACKUPS = {"RETENTION_DAYS": env.int("BACKUP_RETENTION_DAYS", default=30)}
+
 DEFAULT_STORAGE_QUOTA_BYTES = env.int("DEFAULT_STORAGE_QUOTA_BYTES", default=5 * GIB)
 STORAGE_WARNING_THRESHOLDS = [75, 90, 100]  # percent, spec FR-28
 
@@ -209,7 +217,12 @@ CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="redis://localhost:6379/0")
 CELERY_TASK_ACKS_LATE = True
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1  # image jobs are heavy; take one at a time
 CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER", default=False)
+CELERY_TIMEZONE = TIME_ZONE
 CELERY_BEAT_SCHEDULE = {
+    "backup-database": {
+        "task": "ops.tasks.backup_database",
+        "schedule": crontab(hour=2, minute=30),  # nightly, Kampala time
+    },
     "expire-stale-uploads": {
         "task": "assets.tasks.expire_stale_uploads",
         "schedule": 15 * 60,
