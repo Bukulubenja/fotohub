@@ -169,11 +169,11 @@ Each delivered gallery is seen by dozens to hundreds of guests, and some of them
 | 1. Foundation | 3–4 | Django skeleton, auth, tenant permissions, Event/Gallery models, CI | Cross-tenant permission tests pass |
 | 2. Upload pipeline | 5–7 | R2 + Uppy multipart, per-file state, pyvips variants, quota reservation | 1,000-photo event uploads on a Kampala connection with retries working |
 | 3. Customer gallery | 8–9 | SSR gallery, lightbox, password, expiry, downloads, ZIP jobs, OG and WhatsApp share | First screen < 1 MB; works on a low-end Android |
-| 4. Billing and ops | 10–11 | Aggregator payments, prepaid periods and credits, reminders, admin, Sentry, backups | Real UGX payment end to end; restore tested |
+| 4. Billing and ops | **Mostly done.** Live since 2026-10-24 at https://139.84.245.0.sslip.io on one Vultr server in Johannesburg (2 vCPU, 4 GB, Ubuntu 26.04 LTS, Docker Compose: Caddy HTTPS, gunicorn, Celery worker and beat, Postgres 17, Redis). Firewall allows 22/80/443 only, and SSH is key-only. Nightly backups go to R2, and a restore was rehearsed on the server. Flutterwave is wired up and tested in test mode (card and UGX mobile money). Still to do: Flutterwave webhook URL, KYC/live keys (Uganda account question), a domain, an SMTP email service, a Sentry DSN, real plan prices. |
 | 5. Pilot and launch | 12–14 | 3–5 photographers on real events, marketing site, PDPO registration | Repeat use plus paid renewals |
 | 6. Growth | after | Face search (vendor), favorites/proofing, QR codes, print partners | Driven by pilot data |
 
-### Progress (updated 2026-10-24)
+### Progress (updated 2026-10-24, deployed)
 
 | Phase | Status |
 |---|---|
