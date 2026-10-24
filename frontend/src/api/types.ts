@@ -100,6 +100,7 @@ export interface Payment {
   amount_ugx: number
   status: PaymentStatus
   failure_reason: string
+  created_at: string
 }
 
 export interface StartedPayment {

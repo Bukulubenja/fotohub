@@ -26,7 +26,10 @@ function subscription(overrides: Partial<Subscription> = {}): Subscription {
 }
 
 function payment(status: Payment['status'], failure_reason = ''): Payment {
-  return { id: 'p1', plan: 'starter', periods: 3, amount_ugx: 90_000, status, failure_reason }
+  return {
+    id: 'p1', plan: 'starter', periods: 3, amount_ugx: 90_000, status, failure_reason,
+    created_at: new Date().toISOString(),
+  }
 }
 
 type FakeBillingApi = { [K in keyof BillingApi]: Mock<BillingApi[K]> }
@@ -36,6 +39,7 @@ function fakeApi(sub: Subscription, outcomes: Payment[] = []): FakeBillingApi {
   let settled = false
   return {
     plans: vi.fn(async () => [starter]),
+    payments: vi.fn(async () => [] as Payment[]),
     subscription: vi.fn(async () => (settled ? paid : sub)),
     startPayment: vi.fn(async () => ({
       payment: payment('pending'),
@@ -119,4 +123,24 @@ test('a rejected start (bad number) is shown on the form', async () => {
   await user.click(screen.getByRole('button', { name: /^Pay / }))
 
   expect(await screen.findByText(/Enter an MTN or Airtel number/)).toBeInTheDocument()
+})
+
+test('coming back from the hosted checkout resumes the pending payment', async () => {
+  const api = fakeApi(subscription(), [payment('succeeded')])
+  api.payments.mockResolvedValueOnce([payment('pending')])
+
+  render(<BillingPanel api={api} pollMs={1} />)
+
+  expect(await screen.findByText(/You're paid up until 4 February 2027/)).toBeInTheDocument()
+  expect(api.payment).toHaveBeenCalledWith('p1')
+})
+
+test('an old abandoned payment is not resumed', async () => {
+  const api = fakeApi(subscription())
+  api.payments.mockResolvedValueOnce([{ ...payment('pending'), created_at: '2026-01-01T00:00:00Z' }])
+
+  render(<BillingPanel api={api} pollMs={1} />)
+
+  expect(await screen.findByText('Free trial: 13 days left.')).toBeInTheDocument()
+  expect(api.payment).not.toHaveBeenCalled()
 })

@@ -2,8 +2,12 @@ from django.conf import settings
 
 from billing.providers.base import PaymentProvider
 from billing.providers.fake import FakeProvider
+from billing.providers.flutterwave import FlutterwaveProvider
 
-PROVIDERS: dict[str, type] = {FakeProvider.name: FakeProvider}
+PROVIDERS: dict[str, type] = {
+    FakeProvider.name: FakeProvider,
+    FlutterwaveProvider.name: FlutterwaveProvider,
+}
 
 
 def get_provider(name: str | None = None) -> PaymentProvider:

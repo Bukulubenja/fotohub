@@ -137,7 +137,15 @@ unavailable". Photos are never deleted automatically.
 - **Reminders.** The hourly `send-billing-reminders` beat task emails one reminder per stage: due, grace, lapsed, and galleries hidden. It never repeats a stage, and paying resets it. WhatsApp/SMS can plug into `billing.reminders.deliver` once the aggregator is chosen.
 - **Plans** (Starter, Pro, Studio) are seeded with **placeholder prices**. Edit them in the admin once pricing is decided.
 - **Payment providers** plug in behind `billing/providers/base.py`. One webhook, `/api/v1/billing/webhooks/<provider>/`, settles both renewals and photo orders.
-- **Only the `fake` provider exists so far.** Production settings refuse to start with it.
+- **Providers:** `fake` (development and tests; production refuses to start with it) and `flutterwave` (v3 hosted checkout: UGX by `mobilemoneyuganda`, USD by `card`).
+
+### Flutterwave setup
+
+1. In the Flutterwave dashboard (test mode first), copy the **secret key** into `FLW_SECRET_KEY`.
+2. Under Settings → Webhooks, set the URL to `https://<your domain>/api/v1/billing/webhooks/flutterwave/`. Choose a **secret hash** and put the same value in `FLW_SECRET_HASH`. Flutterwave needs a public URL, so use the deployed site or a tunnel such as `cloudflared` when testing locally.
+3. Set `BILLING_PROVIDER=flutterwave`. If the hosted page ignores the payment method we ask for, turn off "Enable dashboard payment options" in the dashboard.
+4. **Webhooks are never trusted on their own.** A webhook must carry the right `verif-hash`. Even then, the transaction is re-checked with `verify_by_reference`, and only an exact amount and currency counts as paid.
+5. **Payments still settle without a webhook.** A buyer who returns to their order page, or a photographer to the dashboard, triggers the same check. `?status=cancelled` on the order page marks an unpaid order as cancelled.
 
 | Method | Path | Notes |
 |---|---|---|

@@ -173,6 +173,16 @@ BILLING = {
     "LAPSED_VISIBLE_DAYS": 30,  # after grace: galleries still viewable, then hidden
     "FAKE_WEBHOOK_SECRET": env("BILLING_FAKE_WEBHOOK_SECRET", default=""),
     "FAKE_AUTO_CONFIRM": False,
+    # Where a hosted checkout sends the photographer back after a renewal (the dashboard).
+    "RETURN_URL": env("BILLING_RETURN_URL", default=""),
+}
+
+# Flutterwave v3 (BILLING_PROVIDER=flutterwave). Keys from the Flutterwave dashboard
+# (Settings > API keys); SECRET_HASH is the webhook "secret hash" you set there.
+FLUTTERWAVE = {
+    "SECRET_KEY": env("FLW_SECRET_KEY", default=""),
+    "SECRET_HASH": env("FLW_SECRET_HASH", default=""),
+    "BASE_URL": env("FLW_BASE_URL", default="https://api.flutterwave.com/v3"),
 }
 
 # Photo sales to gallery visitors: one fixed price per photo (decided 2026-10-21).

@@ -186,7 +186,12 @@ def order_context(order: Order) -> dict:
 @require_GET
 @private_page
 def order_page(request: HttpRequest, token: str) -> HttpResponse:
-    order = services.refresh(find_order(request, token))
+    order = find_order(request, token)
+    if order.status == Order.Status.PENDING and request.GET.get("status") == "cancelled":
+        # Flutterwave sends the buyer back with ?status=cancelled when they give up.
+        order = services.cancel_if_unpaid(order)
+    else:
+        order = services.refresh(order)
     context = order_context(order)
     if order.status == Order.Status.PAID:
         context["items"] = gallery_photos(delivery.order_photos(order))

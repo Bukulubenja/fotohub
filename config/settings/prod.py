@@ -1,10 +1,15 @@
 from .base import *  # noqa: F403
-from .base import env
+from .base import BILLING, FLUTTERWAVE, env
 
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 
-if BILLING["PROVIDER"] == "fake":  # noqa: F405
+if BILLING["PROVIDER"] == "fake":
     raise RuntimeError("Set BILLING_PROVIDER: the fake provider takes no real money.")
+if BILLING["PROVIDER"] == "flutterwave" and not (
+    FLUTTERWAVE["SECRET_KEY"] and FLUTTERWAVE["SECRET_HASH"]
+):
+    raise RuntimeError("Set FLW_SECRET_KEY and FLW_SECRET_HASH for Flutterwave.")
+
 CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS", default=[])
 
 # Database cache until Redis arrives with Celery. Run `manage.py createcachetable` once.

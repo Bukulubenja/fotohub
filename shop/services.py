@@ -109,6 +109,17 @@ def refresh(order: Order) -> Order:
     return apply_outcome(outcome)
 
 
+def cancel_if_unpaid(order: Order) -> Order:
+    """The buyer came back from the provider's page having cancelled. Checks first, so a
+    payment that did go through is never thrown away."""
+    order = refresh(order)
+    with transaction.atomic():
+        locked = Order.objects.select_for_update().get(pk=order.pk)
+        if locked.status == Order.Status.PENDING:
+            return _fail(locked, "You cancelled the payment. Nothing was charged.")
+    return order
+
+
 def send_receipt(order: Order) -> None:
     link = settings.SITE_URL.rstrip("/") + f"/orders/{order.token}/"
     title = order.gallery.event.title if order.gallery else "your gallery"

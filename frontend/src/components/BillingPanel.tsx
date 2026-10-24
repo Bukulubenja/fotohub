@@ -6,6 +6,8 @@ import { formatBytes, formatDate, formatUgx, plural } from '../format'
 const PERIOD_CHOICES = [1, 3, 6, 12]
 const POLL_MS = 3_000
 const POLL_LIMIT = 100 // ~5 minutes of waiting for the photographer to approve on the phone
+// Coming back from Flutterwave's page: keep checking payments started this recently.
+const RESUME_WINDOW_MS = 30 * 60_000
 
 type Renewal =
   | { step: 'idle' }
@@ -85,7 +87,7 @@ export function BillingPanel({
     }
   }, [api, onChange])
 
-  const waitFor = async (paymentId: string) => {
+  const waitFor = useCallback(async (paymentId: string) => {
     for (let i = 0; i < POLL_LIMIT && !cancelled.current; i += 1) {
       await new Promise((resolve) => setTimeout(resolve, pollMs))
       const payment = await api.payment(paymentId).catch(() => null)
@@ -106,7 +108,22 @@ export function BillingPanel({
         message: "We haven't heard back about the payment yet. If money left your account, it will show here soon.",
       })
     }
-  }
+  }, [api, pollMs, refresh])
+
+  useEffect(() => {
+    let stop = false
+    api.payments().then((list) => {
+      const pending = list.find(
+        (p) => p.status === 'pending' && Date.now() - Date.parse(p.created_at) < RESUME_WINDOW_MS,
+      )
+      if (!pending || stop) return
+      setRenewal({ step: 'waiting', message: 'Checking your payment.' })
+      void waitFor(pending.id)
+    }, () => undefined)
+    return () => {
+      stop = true
+    }
+  }, [api, waitFor])
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()

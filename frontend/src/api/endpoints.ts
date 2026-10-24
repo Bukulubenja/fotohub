@@ -79,6 +79,8 @@ export interface BillingApi {
   subscription(): Promise<Subscription>
   startPayment(plan: string, periods: number, phone: string): Promise<StartedPayment>
   payment(id: string): Promise<Payment>
+  /** Newest first: resumes a payment the photographer finished on Flutterwave's page. */
+  payments(): Promise<Payment[]>
 }
 
 export const billing: BillingApi = {
@@ -87,4 +89,5 @@ export const billing: BillingApi = {
   startPayment: (plan, periods, phone) =>
     apiRequest('POST', '/billing/payments/', { plan, periods, phone }),
   payment: (id) => apiRequest('GET', `/billing/payments/${id}/`),
+  payments: async () => (await apiRequest<Page<Payment>>('GET', '/billing/payments/')).results,
 }
