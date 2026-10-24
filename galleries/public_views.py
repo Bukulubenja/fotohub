@@ -167,6 +167,9 @@ def gallery_page(request: HttpRequest, token: str) -> HttpResponse:
         context["unsold_count"] = unsold
         context["unsold_total"] = format_money("UGX", price("UGX").total(unsold))
         context["unsold_total_usd"] = format_money("USD", price("USD").total(unsold))
+        if context["owned"]:
+            token = cart.latest_paid_order_token(request, gallery)
+            context["order_url"] = reverse("shop-order", args=[token]) if token else ""
         context["cart_count"] = cart.count(request, gallery)
         context["cart_ids"] = cart.ids(request, gallery)
         response = render(request, "galleries/public/gallery.html", context)

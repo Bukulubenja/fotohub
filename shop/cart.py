@@ -41,6 +41,22 @@ def owned_photo_ids(request: HttpRequest, gallery: Gallery) -> set[str]:
     }
 
 
+def latest_paid_order_token(request: HttpRequest, gallery: Gallery) -> str | None:
+    """The newest paid order from this browser for this gallery, for a "Your photos" link."""
+    from shop.models import Order
+
+    tokens = request.session.get(ORDERS, [])
+    if not tokens:
+        return None
+    order = (
+        Order.objects.filter(token__in=tokens, status=Order.Status.PAID, gallery=gallery)
+        .order_by("-paid_at")
+        .only("token")
+        .first()
+    )
+    return order.token if order else None
+
+
 def photos(request: HttpRequest, gallery: Gallery) -> list[Photo]:
     """The cart's photos still for sale: ready, in this gallery, not already bought."""
     wanted = _ids(request, gallery)

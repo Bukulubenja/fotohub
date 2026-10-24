@@ -54,6 +54,9 @@ dialog.lightbox::backdrop { background: #0b0b0a; }
     </form>
     <p class="note muted">Full-quality originals, {{ unit_price }} each (or {{ unsold_total_usd }} by card).</p>
     {% endif %}
+    {% if owned %}
+    <p class="note">{% if not unsold_count %}You've bought every photo in this gallery.{% else %}You've bought {{ owned|length }} of these photos.{% endif %}{% if order_url %} <a href="{{ order_url }}">Your photos</a>{% endif %}</p>
+    {% endif %}
     <div class="share">
       <button class="btn ghost" type="button" data-share hidden>Share</button>
       <a class="btn ghost" href="{{ whatsapp_url }}" target="_blank" rel="noopener">WhatsApp</a>

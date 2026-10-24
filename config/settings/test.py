@@ -1,5 +1,5 @@
 from .base import *  # noqa: F403
-from .base import REST_FRAMEWORK, env
+from .base import BILLING, REST_FRAMEWORK, env
 
 SECRET_KEY = "test-only-key"
 CELERY_TASK_ALWAYS_EAGER = True
@@ -31,3 +31,7 @@ REST_FRAMEWORK = {
         "checkout": "1000/min",
     },
 }
+
+# Never charge through a real provider from tests, whatever the developer's .env says.
+BILLING = {**BILLING, "PROVIDER": "fake", "FAKE_WEBHOOK_SECRET": "", "FAKE_AUTO_CONFIRM": False}
+FLUTTERWAVE = {"SECRET_KEY": "", "SECRET_HASH": "", "BASE_URL": "https://flutterwave.invalid/v3"}

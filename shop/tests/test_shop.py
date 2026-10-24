@@ -114,6 +114,30 @@ class TestCart:
         assert response.status_code == 302
 
 
+class TestOwnedNotice:
+    def test_buyer_of_everything_is_told_and_linked_to_their_order(self, client: Client, published):
+        photos = [ready_photo(published), ready_photo(published)]
+        order = make_order(published, photos, client=client)
+
+        html = client.get(url("public-gallery-page", published)).content.decode()
+
+        assert "You&#x27;ve bought every photo in this gallery." in html or (
+            "You've bought every photo in this gallery." in html
+        )
+        assert reverse("shop-order", args=[order.token]) in html
+        assert "Buy all" not in html
+
+    def test_partial_buyer_sees_how_many_and_can_buy_the_rest(self, client: Client, published):
+        bought = ready_photo(published)
+        ready_photo(published)
+        make_order(published, [bought], client=client)
+
+        html = client.get(url("public-gallery-page", published)).content.decode()
+
+        assert "bought 1 of these photos" in html
+        assert "Buy all 1 photo" in html
+
+
 class TestCheckout:
     def test_mobile_money_order_prompts_the_phone(self, client: Client, published):
         add(client, published, ready_photo(published), ready_photo(published))
