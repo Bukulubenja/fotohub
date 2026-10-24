@@ -173,13 +173,13 @@ Each delivered gallery is seen by dozens to hundreds of guests, and some of them
 | 5. Pilot and launch | 12–14 | 3–5 photographers on real events, marketing site, PDPO registration | Repeat use plus paid renewals |
 | 6. Growth | after | Face search (vendor), favorites/proofing, QR codes, print partners | Driven by pilot data |
 
-### Progress (updated 2026-10-21)
+### Progress (updated 2026-10-24)
 
 | Phase | Status |
 |---|---|
 | 1. Foundation | **Done.** Cross-tenant tests pass; CI on SQLite and Postgres. |
 | 2. Upload pipeline | **Done.** Exit gate passed 2026-10-21: 1,000 photos (1.9 GB) from Kampala into R2, killed twice mid-run and resumed from the journal, 35 injected drops and 279 retries, all 1,000 processed. 31 files (3%) needed the manual "retry failed" pass. Uppy replaced by an in-house queue. |
-| 3. Customer gallery | **Built, not yet gated.** Gallery, lightbox, password, expiry, OG/WhatsApp share, owner preview. Still to do: check the first screen with real photos on a low-end Android. |
+| 3. Customer gallery | **Done.** Gate checked 2026-10-24. Emulated low-end Android (6x CPU, slow 4G): first paint 0.86 s, loaded 2.9 s, HTML 12 KB. Real photos: thumbnails average 13 KB, so the first screen is at most about 610 KB. Buy, pay and download worked on the founder's phone. The test fixed a CSRF bug (Referrer-Policy) that would have blocked checkout and password forms. |
 | 3+. Photo sales (new) | **Built.** Every gallery sells photos at USD 0.24 or UGX 900 (decided 2026-10-21); cart, "buy all", checkout, order page with original downloads and ZIP. FotoHub keeps the revenue. |
 | 4. Billing and ops | **Started.** Subscriptions and a payment-provider seam are done, using a fake provider. Still to do: a real aggregator, plan prices, dashboard billing UI, reminders, Sentry, backups, deployment. |
 
