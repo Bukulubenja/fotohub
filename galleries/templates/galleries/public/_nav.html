@@ -1,0 +1,24 @@
+<nav class="tabbar" aria-label="Gallery">
+  <a href="{% url 'public-gallery-page' gallery.public_token %}"{% if active == "home" %} aria-current="page"{% endif %}>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/></svg>
+    <span>Home</span>
+  </a>
+  <a href="{% url 'shop-cart' gallery.public_token %}"{% if active == "cart" %} aria-current="page"{% endif %}>
+    <span class="tab-icon">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8h12l-1 12H7z"/><path d="M9 8V7a3 3 0 0 1 6 0v1"/></svg>
+      <span class="badge" data-cart-count{% if not cart_count %} hidden{% endif %}>{{ cart_count }}</span>
+    </span>
+    <span>Cart</span>
+  </a>
+  <a href="{% url 'public-gallery-favourites' gallery.public_token %}"{% if active == "favourites" %} aria-current="page"{% endif %}>
+    <span class="tab-icon">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>
+      <span class="badge" data-fav-count{% if not favourite_count %} hidden{% endif %}>{{ favourite_count }}</span>
+    </span>
+    <span>Favourites</span>
+  </a>
+  <a href="{% url 'public-gallery-profile' gallery.public_token %}"{% if active == "profile" %} aria-current="page"{% endif %}>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+    <span>Profile</span>
+  </a>
+</nav>

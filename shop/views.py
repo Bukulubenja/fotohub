@@ -24,13 +24,11 @@ from delivery import services as delivery
 from delivery.models import DownloadJob
 from galleries.models import Gallery
 from galleries.public_views import (
-    Unavailable,
     Visit,
     base_context,
-    can_view,
+    nav_context,
+    open_gallery,
     private_page,
-    resolve,
-    unavailable,
     within_rate,
 )
 from shop import cart, services
@@ -39,16 +37,6 @@ from shop.pricing import format_money, price
 
 TOO_MANY_CHECKOUTS = "Too many payment attempts. Wait a while, then try again."
 REFRESH_SECONDS = 5
-
-
-def open_gallery(request: HttpRequest, token: str) -> Visit | HttpResponse:
-    try:
-        visit = resolve(request, token)
-    except Unavailable as exc:
-        return unavailable(request, exc.status, exc.suspended)
-    if not can_view(request, visit):
-        return redirect("public-gallery-page", token=token)
-    return visit
 
 
 def totals(quantity: int) -> dict:
@@ -111,6 +99,7 @@ def cart_page_response(request: HttpRequest, visit: Visit, status: int = 200, **
         "totals": totals(len(items)),
         "unit": totals(1),
         "form": request.POST if request.method == "POST" else {"currency": "UGX"},
+        **nav_context(request, visit.gallery),
         **extra,
     }
     return render(request, "shop/cart.html", context, status=status)

@@ -118,7 +118,8 @@ class TestGalleryPage:
 
         html = client.get(page_url(published)).content.decode()
 
-        positions = [html.index(f"{photo.pk}/thumb.webp") for photo in (first, second, third)]
+        grid = html[html.index("data-grid") :]  # the intro wall above mixes photos into columns
+        positions = [grid.index(f"{photo.pk}/thumb.webp") for photo in (first, second, third)]
         assert positions == sorted(positions)
         assert f"{first.pk}/cover.jpg" in html  # default cover is the first in that order
 

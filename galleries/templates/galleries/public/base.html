@@ -1,4 +1,4 @@
-<!doctype html>
+{% load branding %}<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -7,16 +7,25 @@
 <title>{% block title %}FotoHub{% endblock %}</title>
 {% block meta %}{% endblock %}
 <style>
+{% with light=profile.brand_color|accent:"light" dark=profile.brand_color|accent:"dark" %}
+/* 60% page (--bg), 30% cards and lines (--surface, --line), 10% the photographer's accent,
+   kept for calls to action. --bg values are mirrored in galleries/templatetags/branding.py. */
 :root {
-  --accent: {{ profile.brand_color|default:"#172033" }};
+  --accent: {{ light }}; --accent-ink: {{ light|ink }};
   --bg: #f7f5f1; --surface: #ffffff; --text: #1d1c1a; --muted: #6b665e; --line: #e4dfd6;
   --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --h2: 400 24px/1.25 var(--serif);
+  --measure: 65ch; /* comfortable line length for paragraphs */
   color-scheme: light dark;
 }
 @media (prefers-color-scheme: dark) {
-  :root { --bg: #121110; --surface: #1c1b19; --text: #f1eee8; --muted: #a39d93; --line: #2e2c28; }
+  :root {
+    --accent: {{ dark }}; --accent-ink: {{ dark|ink }};
+    --bg: #121110; --surface: #1c1b19; --text: #f1eee8; --muted: #a39d93; --line: #2e2c28;
+  }
 }
+{% endwith %}
 * { box-sizing: border-box; }
 /* Author display rules (e.g. .btn's inline-flex) would otherwise unhide [hidden] elements. */
 [hidden] { display: none !important; }
@@ -25,7 +34,7 @@ a { color: inherit; }
 .wrap { max-width: 1240px; margin: 0 auto; padding: 0 16px; }
 .btn {
   display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 20px;
-  border: 0; border-radius: 999px; background: var(--accent); color: #fff;
+  border: 0; border-radius: 999px; background: var(--accent); color: var(--accent-ink);
   font: 600 15px/1 var(--sans); text-decoration: none; cursor: pointer;
 }
 .btn.ghost { background: transparent; color: var(--text); box-shadow: inset 0 0 0 1px var(--line); }
@@ -39,10 +48,35 @@ h1 { font: 400 clamp(32px, 6vw, 56px)/1.1 var(--serif); margin: 8px 0; letter-sp
 .card { width: 100%; max-width: 420px; }
 .muted { color: var(--muted); }
 .footer { padding: 40px 16px 56px; text-align: center; color: var(--muted); font-size: 13px; }
+/* Tab bar: a floating dark dock, the same in both themes so it also sits on the photo intro. */
+body.has-nav { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+.tabbar {
+  position: fixed; z-index: 10; left: 50%; bottom: max(12px, env(safe-area-inset-bottom));
+  transform: translateX(-50%); width: min(420px, calc(100% - 24px));
+  display: grid; grid-template-columns: repeat(4, 1fr); padding: 6px;
+  background: rgba(16, 18, 24, .86); border: 1px solid rgba(255, 255, 255, .08); border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .28);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+}
+.tabbar a {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  min-height: 52px; border-radius: 14px; color: #9b968e; text-decoration: none;
+  font: 500 11px/1 var(--sans); letter-spacing: .02em; transition: color .15s, background-color .15s;
+}
+.tabbar a[aria-current="page"] { color: #fff; background: rgba(255, 255, 255, .08); }
+@media (hover: hover) { .tabbar a:hover { color: #fff; } }
+.tabbar a:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
+.tabbar svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.tabbar a[aria-current="page"] svg { stroke-width: 2; }
+.tab-icon { position: relative; display: inline-flex; }
+.badge {
+  position: absolute; top: -5px; left: 14px; min-width: 17px; height: 17px; padding: 0 4px;
+  border-radius: 999px; background: #f1eee8; color: #121110; font: 700 10px/17px var(--sans); text-align: center;
+}
 {% block style %}{% endblock %}
 </style>
 </head>
-<body>
+<body{% block body_class %}{% endblock %}>
 {% if is_preview %}<div class="banner" role="status">{% include "galleries/public/_preview_note.html" %}</div>{% endif %}
 {% block body %}{% endblock %}
 </body>

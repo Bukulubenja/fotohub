@@ -1,0 +1,69 @@
+{% extends "galleries/public/base.html" %}
+{% block title %}Profile · {{ event.title }}{% endblock %}
+{% block body_class %} class="has-nav"{% endblock %}
+{% block style %}
+.page { max-width: 640px; margin: 0 auto; padding: 32px 16px 24px; }
+.section { margin-top: 32px; }
+.page > p { max-width: var(--measure); }
+.section h2 { font: var(--h2); margin: 0 0 12px; }
+.list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface);
+  text-decoration: none;
+}
+.row strong { display: block; }
+.row small { color: var(--muted); font-size: 13px; }
+.status { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--line); white-space: nowrap; }
+.status.paid { background: #dff3e4; color: #14532d; }
+.status.failed { background: #fde2e1; color: #7f1d1d; }
+@media (prefers-color-scheme: dark) {
+  .status.paid { background: #163323; color: #b7e4c7; }
+  .status.failed { background: #3b1717; color: #f2b8b5; }
+}
+.contact { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+{% endblock %}
+{% block body %}
+<main class="page">
+  <div class="eyebrow">{{ event.title }}</div>
+  <h1>Profile</h1>
+  <p class="muted">You don't need an account. Your cart, favourites and purchases are kept on this phone or computer. Your order links, also sent by email, open your photos anywhere.</p>
+
+  <section class="section" aria-labelledby="purchases">
+    <h2 id="purchases">Your purchases</h2>
+    {% if orders %}
+    <ul class="list">
+      {% for item in orders %}
+      <li><a class="row" href="{{ item.url }}">
+        <span>
+          <strong>{{ item.order.quantity }} photo{{ item.order.quantity|pluralize }} · {{ item.total }}</strong>
+          <small>{{ item.order.created_at|date:"j F Y, H:i" }}</small>
+        </span>
+        <span class="status {{ item.order.status }}">{% if item.order.status == "paid" %}Paid · Download{% elif item.order.status == "pending" %}Waiting for payment{% else %}Not paid{% endif %}</span>
+      </a></li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="muted">No purchases from this gallery on this device yet. Bought photos on another phone? Open the link in your order email.</p>
+    {% endif %}
+  </section>
+
+  <section class="section" aria-labelledby="photographer">
+    <h2 id="photographer">Your photographer</h2>
+    <div class="row">
+      <span>
+        <strong>{{ profile.display_name }}</strong>
+        <small>{% if profile.contact_phone %}{{ profile.contact_phone }}{% else %}Photographed {{ event.title }}{% endif %}</small>
+      </span>
+    </div>
+    {% if profile.contact_phone %}
+    <div class="contact">
+      <a class="btn ghost" href="tel:{{ profile.contact_phone }}">Call</a>
+      <a class="btn ghost" href="sms:{{ profile.contact_phone }}">Text</a>
+    </div>
+    {% endif %}
+  </section>
+</main>
+
+{% include "galleries/public/_nav.html" with active="profile" %}
+{% endblock %}

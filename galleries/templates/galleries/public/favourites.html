@@ -1,0 +1,34 @@
+{% extends "galleries/public/base.html" %}
+{% block title %}Favourites · {{ event.title }}{% endblock %}
+{% block body_class %} class="has-nav"{% endblock %}
+{% block style %}
+.page-head { padding: 32px 0 20px; }
+.empty { max-width: 420px; margin: 48px auto; text-align: center; }
+.empty svg { width: 40px; height: 40px; fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-linejoin: round; }
+{% include "galleries/public/_grid_style.html" %}
+{% endblock %}
+{% block body %}
+<main class="wrap">
+  <div class="page-head">
+    <div class="eyebrow">{{ event.title }}</div>
+    <h1>Favourites</h1>
+  </div>
+  {% if photo_count %}
+  <div class="toolbar">
+    <h2>Saved <span class="muted">({{ photo_count }})</span></h2>
+  </div>
+  <div class="grid" data-grid data-total="{{ photo_count }}">{% include "galleries/public/_photos.html" %}</div>
+  {% if page.has_next %}<div class="more"><a class="btn ghost" href="?page={{ page.next_page_number }}" data-more>Load more photos</a></div>{% endif %}
+  <p class="hint">Favourites are kept on this phone or computer. Add the ones you want to your cart: {{ unit_price }} each.</p>
+  {% else %}
+  <div class="empty">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>
+    <p class="muted">No favourites yet. Open a photo and tap the heart to keep it here while you decide.</p>
+    <a class="btn" href="{% url 'public-gallery-page' gallery.public_token %}#photos">Browse the photos</a>
+  </div>
+  {% endif %}
+</main>
+
+{% include "galleries/public/_nav.html" with active="favourites" %}
+{% include "galleries/public/_lightbox.html" %}
+{% endblock %}

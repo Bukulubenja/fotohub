@@ -1,0 +1,177 @@
+<dialog class="lightbox" data-lightbox aria-label="Photo viewer">
+  <div class="lb-top">
+    <span class="lb-count" data-count aria-live="polite"></span>
+    <div class="lb-actions">
+      <button class="lb-btn lb-fav" type="button" data-fav data-url="{% url 'public-gallery-favourite-toggle' gallery.public_token %}" aria-pressed="false" aria-label="Favourite">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>
+      </button>
+      <button class="lb-btn" type="button" data-close aria-label="Close viewer">Close</button>
+    </div>
+  </div>
+  <div class="lb-stage" data-stage><img alt="" data-image></div>
+  <div class="lb-bottom">
+    <button class="lb-btn" type="button" data-prev aria-label="Previous photo">‹ Prev</button>
+    <a class="lb-btn" data-download href="#" hidden>Download</a>
+    <button class="lb-btn" type="button" data-add data-url="{% url 'shop-cart-add' gallery.public_token %}" hidden>Add to cart · {{ unit_price }}</button>
+    <button class="lb-btn" type="button" data-next aria-label="Next photo">Next ›</button>
+  </div>
+</dialog>
+
+{{ cart_ids|json_script:"cart-ids" }}
+{{ favourite_ids|json_script:"favourite-ids" }}
+<script>
+(() => {
+  const grid = document.querySelector("[data-grid]");
+  const box = document.querySelector("[data-lightbox]");
+  // Without <dialog> support the tiles stay plain links to the full-size image.
+  if (!grid || !box || typeof box.showModal !== "function") return;
+  const $ = (sel) => box.querySelector(sel);
+  const image = $("[data-image]"), count = $("[data-count]"), download = $("[data-download]");
+  const add = $("[data-add]"), addLabel = add.textContent;
+  const fav = $("[data-fav]");
+  const inCart = new Set(JSON.parse(document.getElementById("cart-ids").textContent));
+  const favourites = new Set(JSON.parse(document.getElementById("favourite-ids").textContent));
+  const prev = $("[data-prev]"), next = $("[data-next]");
+  const total = Number(grid.dataset.total);
+  let moreLink = document.querySelector("[data-more]");
+  let index = -1, opener = null, loading = null;
+
+  const tiles = () => Array.from(grid.querySelectorAll("a.tile"));
+  const setBadge = (selector, value) => {
+    const badge = document.querySelector(selector);
+    if (!badge) return;
+    badge.textContent = value;
+    badge.hidden = !value;
+  };
+  const post = async (url, photo) => {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { Accept: "application/json" },
+      body: new URLSearchParams({ photo }),
+      credentials: "same-origin",
+    });
+    if (!response.ok) throw new Error(String(response.status));
+    return response.json();
+  };
+
+  function loadMore() {
+    if (!moreLink) return Promise.resolve();
+    if (loading) return loading;
+    const url = new URL(moreLink.href);
+    url.searchParams.set("partial", "1");
+    moreLink.setAttribute("aria-busy", "true");
+    loading = fetch(url, { credentials: "same-origin" })
+      .then((response) => (response.ok ? response.text() : Promise.reject(response.status)))
+      .then((html) => {
+        const fragment = document.createElement("template");
+        fragment.innerHTML = html;
+        const marker = fragment.content.querySelector("[data-next-page]");
+        const nextPage = marker ? marker.dataset.nextPage : "";
+        if (marker) marker.remove();
+        grid.append(fragment.content);
+        if (nextPage) moreLink.href = nextPage;
+        else { moreLink.parentElement.remove(); moreLink = null; }
+      })
+      .catch(() => { if (moreLink) moreLink.textContent = "Couldn't load more. Tap to retry"; })
+      .finally(() => { loading = null; if (moreLink) moreLink.removeAttribute("aria-busy"); });
+    return loading;
+  }
+
+  function showFavourite(photo) {
+    const on = favourites.has(photo);
+    fav.setAttribute("aria-pressed", String(on));
+    fav.setAttribute("aria-label", on ? "Remove from favourites" : "Add to favourites");
+  }
+
+  function show(i) {
+    const all = tiles();
+    if (i < 0 || i >= all.length) return;
+    index = i;
+    const tile = all[i];
+    image.removeAttribute("src"); // don't flash the previous photo
+    image.width = Number(tile.dataset.w);
+    image.height = Number(tile.dataset.h);
+    image.alt = tile.querySelector("img").alt;
+    image.src = tile.href;
+    count.textContent = `${i + 1} / ${total}`;
+    const owned = Boolean(tile.dataset.download);
+    download.hidden = !owned;
+    if (owned) download.href = tile.dataset.download;
+    add.hidden = owned;
+    add.disabled = inCart.has(tile.dataset.photo);
+    add.textContent = add.disabled ? "In your cart ✓" : addLabel;
+    showFavourite(tile.dataset.photo);
+    prev.disabled = i === 0;
+    next.disabled = i === all.length - 1 && !moreLink;
+    for (const near of [all[i - 1], all[i + 1]]) if (near) new Image().src = near.href;
+    if (i >= all.length - 3) loadMore(); // fetch the next page before the viewer runs out
+  }
+
+  async function step(delta) {
+    if (delta > 0 && index >= tiles().length - 1) await loadMore();
+    show(index + delta);
+  }
+
+  grid.addEventListener("click", (event) => {
+    const tile = event.target.closest("a.tile");
+    if (!tile || event.metaKey || event.ctrlKey || event.shiftKey) return;
+    event.preventDefault();
+    opener = tile;
+    show(tiles().indexOf(tile));
+    box.showModal();
+  });
+  add.addEventListener("click", async () => {
+    const photo = tiles()[index].dataset.photo;
+    add.disabled = true;
+    try {
+      setBadge("[data-cart-count]", (await post(add.dataset.url, photo)).count);
+      inCart.add(photo);
+      add.textContent = "In your cart ✓";
+    } catch {
+      add.disabled = false;
+      add.textContent = "Couldn't add. Tap to retry";
+    }
+  });
+  fav.addEventListener("click", async () => {
+    const photo = tiles()[index].dataset.photo;
+    // Flip at once so the heart feels instant; undo if the server disagrees.
+    const was = favourites.has(photo);
+    if (was) favourites.delete(photo); else favourites.add(photo);
+    showFavourite(photo);
+    try {
+      const result = await post(fav.dataset.url, photo);
+      if (result.favourite) favourites.add(photo); else favourites.delete(photo);
+      setBadge("[data-fav-count]", result.count);
+    } catch {
+      if (was) favourites.add(photo); else favourites.delete(photo);
+    }
+    if (tiles()[index] && tiles()[index].dataset.photo === photo) showFavourite(photo);
+  });
+  prev.addEventListener("click", () => step(-1));
+  next.addEventListener("click", () => step(1));
+  $("[data-close]").addEventListener("click", () => box.close());
+  box.addEventListener("keydown", (event) => {
+    if (event.key === "ArrowLeft") step(-1);
+    if (event.key === "ArrowRight") step(1);
+  });
+  box.addEventListener("close", () => {
+    image.removeAttribute("src");
+    // Return focus to the photo being viewed (it may differ from the one opened).
+    if (opener) (tiles()[index] || opener).focus();
+  });
+
+  let startX = null;
+  const stage = $("[data-stage]");
+  stage.addEventListener("pointerdown", (event) => { startX = event.clientX; });
+  stage.addEventListener("pointerup", (event) => {
+    if (startX === null) return;
+    const dx = event.clientX - startX;
+    startX = null;
+    if (Math.abs(dx) > 50) step(dx < 0 ? 1 : -1);
+  });
+
+  if (moreLink) {
+    moreLink.addEventListener("click", (event) => { event.preventDefault(); loadMore(); });
+  }
+})();
+</script>

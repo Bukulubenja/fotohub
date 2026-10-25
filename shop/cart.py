@@ -57,6 +57,16 @@ def latest_paid_order_token(request: HttpRequest, gallery: Gallery) -> str | Non
     return order.token if order else None
 
 
+def orders(request: HttpRequest, gallery: Gallery) -> list:
+    """Orders started in this browser for this gallery, newest first, for the "You" page."""
+    from shop.models import Order
+
+    tokens = request.session.get(ORDERS, [])
+    if not tokens:
+        return []
+    return list(Order.objects.filter(token__in=tokens, gallery=gallery))
+
+
 def photos(request: HttpRequest, gallery: Gallery) -> list[Photo]:
     """The cart's photos still for sale: ready, in this gallery, not already bought."""
     wanted = _ids(request, gallery)
