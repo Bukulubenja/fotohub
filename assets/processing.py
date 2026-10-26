@@ -1,7 +1,9 @@
 """Derivative rendering with libvips (plan §3.3).
 
 Every public variant is re-encoded with all metadata dropped, so EXIF GPS never leaves the
-original. Originals stay untouched and private.
+original. Originals stay untouched and private. Previews (viewer, cover) are watermarked
+with the photographer's name; thumbnails are too small to be worth stealing, and the web
+size is a paid download.
 """
 
 import logging
@@ -11,8 +13,10 @@ from dataclasses import dataclass
 
 import pyvips
 from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone
 
+from assets import watermark
 from assets.models import Photo
 from assets.storage import get_storage
 
@@ -38,13 +42,14 @@ class VariantSpec:
     content_type: str
     quality: int
     crop: str = "none"
+    watermark: bool = False
 
 
 VARIANTS = (
     VariantSpec("thumb", 400, 400, ".webp", "image/webp", 72),
-    VariantSpec("viewer", 1600, 1600, ".webp", "image/webp", 78),
+    VariantSpec("viewer", 1600, 1600, ".webp", "image/webp", 78, watermark=True),
     VariantSpec("web", 2048, 2048, ".jpg", "image/jpeg", 84),
-    VariantSpec("cover", 1200, 630, ".jpg", "image/jpeg", 80, crop="attention"),
+    VariantSpec("cover", 1200, 630, ".jpg", "image/jpeg", 80, crop="attention", watermark=True),
 )
 
 
@@ -77,7 +82,7 @@ def inspect(path: str) -> tuple[int, int]:
     return _oriented_size(header)
 
 
-def render(path: str, spec: VariantSpec) -> Rendered:
+def render(path: str, spec: VariantSpec, label: str = "") -> Rendered:
     image = pyvips.Image.thumbnail(
         f"{path}[fail_on=error]",  # loader options; rejects truncated files instead of padding
         spec.width,
@@ -85,6 +90,8 @@ def render(path: str, spec: VariantSpec) -> Rendered:
         size="down",  # never upscale small originals
         crop=spec.crop,
     )
+    if spec.watermark:
+        image = watermark.apply(image, label)
     # thumbnail() already converted to sRGB, so dropping the ICC profile is safe.
     options = {"Q": spec.quality, "keep": "none"}
     if spec.content_type == "image/jpeg":
@@ -93,10 +100,10 @@ def render(path: str, spec: VariantSpec) -> Rendered:
     return Rendered(spec, data, image.width, image.height)
 
 
-def render_all(path: str) -> tuple[tuple[int, int], list[Rendered]]:
+def render_all(path: str, label: str = "") -> tuple[tuple[int, int], list[Rendered]]:
     size = inspect(path)
     try:
-        return size, [render(path, spec) for spec in VARIANTS]
+        return size, [render(path, spec, label) for spec in VARIANTS]
     except pyvips.Error as exc:
         raise ProcessingError("We couldn't read this photo. The file may be damaged.") from exc
 
@@ -106,6 +113,13 @@ def variant_key(photo: Photo, spec: VariantSpec) -> str:
     return f"derivatives/{photo.gallery_id}/{photo.pk}/{spec.name}{spec.suffix}"
 
 
+def watermark_label(photo: Photo) -> str:
+    try:
+        return f"© {photo.gallery.event.owner.profile.display_name}"
+    except ObjectDoesNotExist:
+        return "FotoHub preview"
+
+
 def mark_failed(photo_id: str, reason: str) -> None:
     Photo.objects.filter(pk=photo_id, status=Photo.Status.PROCESSING).update(
         status=Photo.Status.FAILED, failure_reason=reason, updated_at=timezone.now()
@@ -113,7 +127,11 @@ def mark_failed(photo_id: str, reason: str) -> None:
 
 
 def process_photo(photo_id: str) -> None:
-    photo = Photo.objects.filter(pk=photo_id, status=Photo.Status.PROCESSING).first()
+    photo = (
+        Photo.objects.select_related("gallery__event__owner__profile")
+        .filter(pk=photo_id, status=Photo.Status.PROCESSING)
+        .first()
+    )
     if photo is None:
         return  # deleted, or already processed by an earlier delivery of this task
     storage = get_storage()
@@ -125,7 +143,7 @@ def process_photo(photo_id: str) -> None:
             mark_failed(photo_id, "The stored file changed after upload. Upload it again.")
             return
         try:
-            (width, height), rendered = render_all(path)
+            (width, height), rendered = render_all(path, label=watermark_label(photo))
         except ProcessingError as exc:
             logger.info("photo %s rejected: %s", photo_id, exc)
             mark_failed(photo_id, str(exc))

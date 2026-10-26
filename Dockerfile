@@ -14,10 +14,13 @@ FROM python:3.14-slim-trixie
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    DJANGO_SETTINGS_MODULE=config.settings.prod
+    DJANGO_SETTINGS_MODULE=config.settings.prod \
+    FONTCONFIG_FILE=/etc/fonts/fonts.conf
 
+# fontconfig + one fallback font: preview watermarks render text (assets/watermark.py uses the
+# bundled Inter; its startup check fails the deploy if text can't be drawn).
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends postgresql-client \
+    && apt-get install -y --no-install-recommends postgresql-client fontconfig fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --create-home --uid 1000 fotohub
 

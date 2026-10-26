@@ -114,8 +114,8 @@ def test_cleans_up_derivatives_if_photo_deleted_mid_processing(storage, monkeypa
     photo = stored_photo(storage, make_jpeg())
     real_render_all = processing.render_all
 
-    def render_then_delete(path):
-        result = real_render_all(path)
+    def render_then_delete(path, **kwargs):
+        result = real_render_all(path, **kwargs)
         Photo.objects.filter(pk=photo.pk).delete()
         return result
 
@@ -125,3 +125,21 @@ def test_cleans_up_derivatives_if_photo_deleted_mid_processing(storage, monkeypa
 
     listing = storage.client.list_objects_v2(Bucket=storage.bucket, Prefix="derivatives/")
     assert listing.get("KeyCount", 0) == 0
+
+
+def test_previews_are_watermarked_but_thumbs_and_paid_sizes_are_not(tmp_path):
+    path = tmp_path / "photo.jpg"
+    path.write_bytes(make_jpeg(3000, 2000))
+
+    for spec in processing.VARIANTS:
+        plain = processing.render(str(path), spec, label="")
+        marked = processing.render(str(path), spec, label="\u00a9 Lens & Light")
+
+        assert (plain.data != marked.data) is (spec.name in {"viewer", "cover"}), spec.name
+
+
+def test_watermark_label_names_the_photographer():
+    photo = PhotoFactory()
+    photo.gallery.event.owner.profile.display_name = "Lens & Light"
+
+    assert processing.watermark_label(photo) == "\u00a9 Lens & Light"
