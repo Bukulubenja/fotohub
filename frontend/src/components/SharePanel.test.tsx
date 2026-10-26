@@ -9,6 +9,8 @@ function gallery(status: Gallery['status']): Gallery {
     event: 'e1',
     title: 'Amina & Daniel',
     status,
+    has_password: false,
+    expires_at: null,
     share_url: 'https://fotohub.ug/g/tok/',
     share_message: 'Hi! Your photos are ready:\nhttps://fotohub.ug/g/tok/\n— Lens & Light',
   }

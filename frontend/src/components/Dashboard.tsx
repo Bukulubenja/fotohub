@@ -4,6 +4,8 @@ import type { Gallery, Me, StorageUsage, Subscription, UploadConfig } from '../a
 import { formatBytes, plural } from '../format'
 import { useUploadQueue } from '../upload/useUploadQueue'
 import { BillingPanel } from './BillingPanel'
+import { NewEventForm } from './NewEventForm'
+import { PublishControl } from './PublishControl'
 import { SharePanel } from './SharePanel'
 import { UploadPanel } from './UploadPanel'
 
@@ -85,6 +87,7 @@ export function Dashboard({ me, onLogout }: { me: Me; onLogout: () => void }) {
   const [config, setConfig] = useState<UploadConfig | null>(null)
   const [usage, setUsage] = useState<StorageUsage | null>(null)
   const [error, setError] = useState('')
+  const [creating, setCreating] = useState(false)
   // A state setter is stable, so BillingPanel doesn't refetch on every render.
   const [subscription, setSubscription] = useState<Subscription | null>(null)
   const uploadsPaused = subscription !== null && !subscription.can_upload
@@ -104,6 +107,16 @@ export function Dashboard({ me, onLogout }: { me: Me; onLogout: () => void }) {
       .catch((err: Error) => setError(err.message))
     refreshUsage()
   }, [refreshUsage])
+
+  const replaceGallery = useCallback((updated: Gallery) => {
+    setGalleryList((list) => list.map((g) => (g.id === updated.id ? updated : g)))
+  }, [])
+
+  const addGallery = (created: Gallery) => {
+    setGalleryList((list) => [created, ...list])
+    setSelected(created.id)
+    setCreating(false)
+  }
 
   const logout = async () => {
     await auth.logout().catch(() => undefined)
@@ -126,21 +139,35 @@ export function Dashboard({ me, onLogout }: { me: Me; onLogout: () => void }) {
       <main className="content">
         <BillingPanel onChange={setSubscription} />
         {error && <p className="notice notice--error" role="alert">{error}</p>}
-        {config && galleryList.length === 0 && !error && (
-          <p className="panel muted">Create a gallery first, then come back to add photos.</p>
+        {creating && <NewEventForm onCreated={addGallery} onCancel={() => setCreating(false)} />}
+        {config && galleryList.length === 0 && !error && !creating && (
+          <section className="panel empty">
+            <p className="muted">Create your first event: you get a private gallery to upload photos to and share with guests.</p>
+            <button type="button" className="button" onClick={() => setCreating(true)}>
+              New event
+            </button>
+          </section>
         )}
         {galleryList.length > 0 && (
-          <label className="picker">
-            Gallery
-            <select value={selected} onChange={(event) => setSelected(event.target.value)}>
-              {galleryList.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.title} ({g.status})
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="gallery-bar">
+            <label className="picker">
+              Gallery
+              <select value={selected} onChange={(event) => setSelected(event.target.value)}>
+                {galleryList.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.title} ({g.status})
+                  </option>
+                ))}
+              </select>
+            </label>
+            {!creating && (
+              <button type="button" className="button button--small" onClick={() => setCreating(true)}>
+                New event
+              </button>
+            )}
+          </div>
         )}
+        {gallery && <PublishControl gallery={gallery} onChange={replaceGallery} />}
         {gallery && uploadsPaused && (
           <>
             <SharePanel gallery={gallery} />

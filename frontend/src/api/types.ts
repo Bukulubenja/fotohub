@@ -7,6 +7,14 @@ export interface Me {
   brand_color: string
 }
 
+export interface EventInfo {
+  id: string
+  title: string
+  event_date: string
+  description: string
+  location_label: string
+}
+
 export type GalleryStatus = 'draft' | 'processing' | 'published' | 'archived' | 'deletion_pending'
 
 export interface Gallery {
@@ -14,6 +22,8 @@ export interface Gallery {
   event: string
   title: string
   status: GalleryStatus
+  has_password: boolean
+  expires_at: string | null
   /** Customer link, and a WhatsApp-ready message containing it (never the password). */
   share_url: string
   share_message: string

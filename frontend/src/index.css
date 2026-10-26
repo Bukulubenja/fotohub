@@ -1,20 +1,30 @@
+/* Inter (SIL OFL, see fonts/OFL.txt), the blueprint typeface; Vite bundles and hashes it. */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('./fonts/inter-latin-wght-normal.woff2') format('woff2');
+}
+
+/* FotoHub blueprint palette (same tokens as the customer gallery). */
 :root {
-  --bg: #f6f5f2;
+  --bg: #f7f8fa;
   --surface: #ffffff;
-  --text: #1b1d22;
-  --muted: #646a73;
-  --border: #e2e0da;
-  --accent: #172033;
+  --text: #132238;
+  --muted: #5b6578;
+  --border: #e2e8f0;
+  --accent: #6d5ce8;
   --accent-text: #ffffff;
   --error: #b42318;
   --error-bg: #fdecea;
   --warn: #8a5300;
-  --warn-bg: #fff4e0;
-  --ok: #1f7a4d;
-  --radius: 10px;
+  --warn-bg: #fff4d6;
+  --ok: #0b7a72;
+  --radius: 12px;
   --gap: 16px;
   color-scheme: light;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   line-height: 1.5;
   color: var(--text);
   background: var(--bg);
@@ -22,18 +32,18 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #121418;
-    --surface: #1b1e24;
-    --text: #e8e9ec;
-    --muted: #9aa0aa;
-    --border: #2c3038;
-    --accent: #d9dde6;
-    --accent-text: #121418;
-    --error: #ff8a80;
+    --bg: #0b1220;
+    --surface: #132238;
+    --text: #e8ecf4;
+    --muted: #9aa6ba;
+    --border: #24324a;
+    --accent: #6d5ce8;
+    --accent-text: #ffffff;
+    --error: #f2b8b5;
     --error-bg: #3a1d1b;
-    --warn: #ffc56b;
+    --warn: #f5b942;
     --warn-bg: #3a2b12;
-    --ok: #6fd3a0;
+    --ok: #2cc4b8;
     color-scheme: dark;
   }
 }
@@ -105,7 +115,8 @@ h1 {
 }
 
 input,
-select {
+select,
+textarea {
   font: inherit;
   padding: 10px 12px;
   border: 1px solid var(--border);
@@ -388,4 +399,62 @@ progress {
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+/* New event and publishing */
+.gallery-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: end;
+  justify-content: space-between;
+}
+
+.new-event h2 {
+  margin: 0 0 4px;
+  font-size: 1.125rem;
+}
+
+.new-event form {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.new-event__row {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.publish {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.publish p {
+  margin: 0;
+}
+
+.publish--published {
+  border-color: var(--ok);
+}
+
+.button--quiet {
+  background: transparent;
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.empty {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+}
+
+.empty p {
+  margin: 0;
 }

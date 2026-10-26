@@ -1,5 +1,6 @@
 import { apiRequest } from './client'
 import type {
+  EventInfo,
   Gallery,
   Me,
   Page,
@@ -25,6 +26,35 @@ export const auth = {
 export const galleries = {
   // First page is enough for the picker until galleries get their own search.
   list: () => apiRequest<Page<Gallery>>('GET', '/galleries/'),
+}
+
+export interface NewEvent {
+  title: string
+  event_date: string
+  location_label: string
+  description: string
+}
+
+export interface NewGallery {
+  event: string
+  title: string
+  password?: string
+  expires_at?: string | null
+}
+
+/** Creating and publishing galleries; swapped for a fake in tests. */
+export interface GalleryAdminApi {
+  createEvent(input: NewEvent): Promise<EventInfo>
+  createGallery(input: NewGallery): Promise<Gallery>
+  publish(id: string): Promise<Gallery>
+  unpublish(id: string): Promise<Gallery>
+}
+
+export const galleryAdmin: GalleryAdminApi = {
+  createEvent: (input) => apiRequest('POST', '/events/', input),
+  createGallery: (input) => apiRequest('POST', '/galleries/', input),
+  publish: (id) => apiRequest('POST', `/galleries/${id}/publish/`),
+  unpublish: (id) => apiRequest('POST', `/galleries/${id}/unpublish/`),
 }
 
 export const photos = {
