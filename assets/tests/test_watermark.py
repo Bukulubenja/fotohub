@@ -34,25 +34,42 @@ def test_check_passes_with_the_shipped_font():
     assert watermark.check_watermark_font(None) == []
 
 
+def test_check_never_renders_text_in_this_process(monkeypatch):
+    """Regression: Celery runs checks in the worker parent before forking; text rendered
+    there made every forked child hang (production, 2026-10-26)."""
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("the check must render text in a subprocess")
+
+    monkeypatch.setattr(pyvips.Image, "text", forbidden)
+
+    assert watermark.check_watermark_font(None) == []
+
+
+def fake_probe(result):
+    return lambda: result
+
+
 def test_check_fails_when_text_comes_out_tiny(monkeypatch):
-    monkeypatch.setattr(watermark, "_text_mask", lambda label, size: pyvips.Image.black(60, 8))
+    monkeypatch.setattr(
+        watermark, "_probe", fake_probe({"width": 118, "height": 12, "same_as_sans": False})
+    )
 
     assert [e.id for e in watermark.check_watermark_font(None)] == ["assets.E002"]
 
 
 def test_check_fails_when_text_cannot_render(monkeypatch):
-    def broken(label, size):
-        raise pyvips.Error("no pango")
+    def broken():
+        raise RuntimeError("no pango")
 
-    monkeypatch.setattr(watermark, "_text_mask", broken)
+    monkeypatch.setattr(watermark, "_probe", broken)
 
     assert [e.id for e in watermark.check_watermark_font(None)] == ["assets.E001"]
 
 
 def test_check_warns_when_inter_falls_back_to_the_system_font(monkeypatch):
-    def system_sans(label, size):
-        return pyvips.Image.text(label, font=f"sans {size}", dpi=72)
-
-    monkeypatch.setattr(watermark, "_text_mask", system_sans)
+    monkeypatch.setattr(
+        watermark, "_probe", fake_probe({"width": 340, "height": 29, "same_as_sans": True})
+    )
 
     assert [e.id for e in watermark.check_watermark_font(None)] == ["assets.W001"]

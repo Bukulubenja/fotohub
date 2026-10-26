@@ -5,7 +5,10 @@ in translucent white over a faint dark shadow so it reads on light and dark phot
 Only previews are marked; originals and paid downloads never are.
 """
 
+import json
 import math
+import subprocess
+import sys
 from html import escape
 from pathlib import Path
 
@@ -56,25 +59,57 @@ def apply(image: pyvips.Image, label: str) -> pyvips.Image:
     )
 
 
+# Run in a separate, short-lived Python: Celery's Django fixup runs system checks in the worker's
+# parent process before it forks the pool, and Pango/GLib state created before a fork makes the
+# children hang on their first text render (production, 2026-10-26: every photo timed out).
+_PROBE = """
+import json, sys, pyvips
+font_file, font = sys.argv[1], sys.argv[2]
+mask = pyvips.Image.text("Watermark check", font=font + " 40", fontfile=font_file, dpi=72)
+sans = pyvips.Image.text("Watermark check", font="sans 40", dpi=72)
+print(json.dumps({"width": mask.width, "height": mask.height,
+                  "same_as_sans": mask.write_to_memory() == sans.write_to_memory()}))
+"""
+PROBE_TIMEOUT_SECONDS = 60
+
+
+def _probe() -> dict:
+    """Render the check text out of process; raises RuntimeError if that fails."""
+    try:
+        done = subprocess.run(
+            [sys.executable, "-I", "-c", _PROBE, str(FONT_FILE), FONT],
+            capture_output=True,
+            text=True,
+            timeout=PROBE_TIMEOUT_SECONDS,
+            check=True,
+        )
+        return json.loads(done.stdout.strip().splitlines()[-1])
+    except (OSError, subprocess.SubprocessError, ValueError, IndexError) as exc:
+        detail = getattr(exc, "stderr", "") or str(exc)
+        raise RuntimeError(
+            detail.strip().splitlines()[-1] if detail.strip() else repr(exc)
+        ) from exc
+
+
 @checks.register()
 def check_watermark_font(app_configs, **kwargs) -> list[checks.CheckMessage]:
     """Fail loudly (migrate runs checks on deploy) if previews would go out unmarked or garbled."""
     try:
-        mask = _text_mask("Watermark check", 40)
-    except pyvips.Error as exc:
+        result = _probe()
+    except RuntimeError as exc:
         return [checks.Error(f"Watermark text can't be rendered: {exc}", id="assets.E001")]
     # At 40 px the check text inks about 340 x 29 in Inter; with no usable font it came out
     # 118 x 12 on the server image.
-    if mask.height < 20 or mask.width < 200:
+    if result["height"] < 20 or result["width"] < 200:
         return [
             checks.Error(
-                f"Watermark text renders at {mask.width}x{mask.height}: the font isn't loading.",
+                f"Watermark text renders at {result['width']}x{result['height']}: "
+                "the font isn't loading.",
                 hint=f"Check that {FONT_FILE} exists and fontconfig is installed in the image.",
                 id="assets.E002",
             )
         ]
-    fallback = pyvips.Image.text("Watermark check", font="sans 40", dpi=72)
-    if mask.write_to_memory() == fallback.write_to_memory():
+    if result["same_as_sans"]:
         # Still a readable watermark, just not in Inter.
         return [
             checks.Warning(
