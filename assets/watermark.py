@@ -13,11 +13,10 @@ import pyvips
 from django.conf import settings
 from django.core import checks
 
-# Server images have no system fonts, so text is rendered from the font we ship.
-FONT_FILE = (
-    Path(settings.BASE_DIR) / "galleries/static/galleries/fonts/inter-latin-wght-normal.woff2"
-)
-FONT = "Inter Semi-Bold"
+# Server images have no system fonts, so text is rendered from a font we ship: a static TTF,
+# because libvips' FreeType can't read the woff2 web font (it silently falls back to sans).
+FONT_FILE = Path(settings.BASE_DIR) / "assets/fonts/Inter-SemiBold-latin.ttf"
+FONT = "Inter SemiBold"
 ANGLE = -30
 TEXT_OPACITY = 0.30
 SHADOW_OPACITY = 0.14
@@ -64,13 +63,24 @@ def check_watermark_font(app_configs, **kwargs) -> list[checks.CheckMessage]:
         mask = _text_mask("Watermark check", 40)
     except pyvips.Error as exc:
         return [checks.Error(f"Watermark text can't be rendered: {exc}", id="assets.E001")]
-    # Inter at 40 px renders the check text about 300 x 40; a missing font comes out tiny.
-    if mask.height < 30 or mask.width < 200:
+    # At 40 px the check text inks about 340 x 29 in Inter; with no usable font it came out
+    # 118 x 12 on the server image.
+    if mask.height < 20 or mask.width < 200:
         return [
             checks.Error(
                 f"Watermark text renders at {mask.width}x{mask.height}: the font isn't loading.",
                 hint=f"Check that {FONT_FILE} exists and fontconfig is installed in the image.",
                 id="assets.E002",
+            )
+        ]
+    fallback = pyvips.Image.text("Watermark check", font="sans 40", dpi=72)
+    if mask.write_to_memory() == fallback.write_to_memory():
+        # Still a readable watermark, just not in Inter.
+        return [
+            checks.Warning(
+                "Watermarks use the system sans font: Inter didn't load.",
+                hint=f"On Linux, check that {FONT_FILE} exists and fontconfig is installed.",
+                id="assets.W001",
             )
         ]
     return []

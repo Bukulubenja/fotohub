@@ -47,3 +47,12 @@ def test_check_fails_when_text_cannot_render(monkeypatch):
     monkeypatch.setattr(watermark, "_text_mask", broken)
 
     assert [e.id for e in watermark.check_watermark_font(None)] == ["assets.E001"]
+
+
+def test_check_warns_when_inter_falls_back_to_the_system_font(monkeypatch):
+    def system_sans(label, size):
+        return pyvips.Image.text(label, font=f"sans {size}", dpi=72)
+
+    monkeypatch.setattr(watermark, "_text_mask", system_sans)
+
+    assert [e.id for e in watermark.check_watermark_font(None)] == ["assets.W001"]
