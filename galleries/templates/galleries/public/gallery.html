@@ -59,6 +59,18 @@
 .summary > :first-child { margin-top: 0; }
 .note { font-size: 14px; margin: 10px 0 0; }
 .share { display: flex; justify-content: center; gap: 8px; margin-top: 16px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; margin: 0 0 24px;
+  border-radius: 999px; background: rgba(255, 255, 255, .08); color: #e8ecf4; font: 500 13px/1 var(--sans);
+}
+.chip svg, .privacy svg { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.lead { margin: 0 0 20px; }
+.privacy {
+  display: flex; gap: 10px; align-items: flex-start; margin: 0 0 16px; padding: 12px 14px;
+  border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); font-size: 14px;
+}
+.privacy svg { margin-top: 3px; color: var(--accent); }
+.footer .takedown { max-width: var(--measure); margin: 0 auto 8px; }
 {% include "galleries/public/_grid_style.html" %}
 {% endblock %}
 {% block body %}
@@ -77,6 +89,7 @@
     <div class="eyebrow">{{ profile.display_name }}</div>
     <h1>{{ event.title }}</h1>
     <p class="intro-meta">{{ event.event_date|date:"j F Y" }}{% if event.location_label %} · {{ event.location_label }}{% endif %}</p>
+    <p class="chip"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Private gallery</p><br>
     <a class="intro-go" href="#photos" aria-label="See the photos">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
     </a>
@@ -85,6 +98,7 @@
 
 <main class="wrap" id="photos">
   <section class="summary">
+    <p class="lead">Photos from {{ event.title }} by {{ profile.display_name }}. Browse the gallery, save favourites, and select the photos you want to purchase.</p>
     {% if event.description %}<p class="muted">{{ event.description|linebreaksbr }}</p>{% endif %}
     {% if unsold_count %}
     <form method="post" action="{% url 'shop-cart-add-all' gallery.public_token %}">
@@ -104,6 +118,7 @@
   <div class="toolbar">
     <h2>Photos <span class="muted">({{ photo_count }})</span></h2>
   </div>
+  <p class="privacy"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span>This is a private event gallery. Please do not repost or share images of others without permission.</span></p>
   {% if photo_count %}
   <div class="grid" data-grid data-total="{{ photo_count }}">{% include "galleries/public/_photos.html" %}</div>
   {% if page.has_next %}<div class="more"><a class="btn ghost" href="?page={{ page.next_page_number }}" data-more>Load more photos</a></div>{% endif %}
@@ -113,7 +128,10 @@
   {% endif %}
 </main>
 
-<footer class="footer">Delivered with FotoHub</footer>
+<footer class="footer">
+  {% include "galleries/public/_takedown.html" %}
+  Delivered with FotoHub
+</footer>
 
 {% include "galleries/public/_nav.html" with active="home" %}
 {% include "galleries/public/_lightbox.html" %}

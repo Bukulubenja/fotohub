@@ -9,7 +9,8 @@
 .item form { position: absolute; top: 4px; right: 4px; margin: 0; }
 .item button { width: 32px; height: 32px; border: 0; border-radius: 50%; background: rgba(0,0,0,.6); color: #fff; font-size: 18px; line-height: 1; cursor: pointer; }
 .summary { display: flex; justify-content: space-between; align-items: baseline; border-top: 1px solid var(--line); padding-top: 16px; }
-.summary strong { font: 700 24px/1.2 var(--sans); }
+.summary > span:first-child { font: 700 22px/1.2 var(--sans); }
+.summary > span:last-child { font-size: 14px; }
 fieldset { border: 0; padding: 0; margin: 24px 0 0; display: grid; gap: 10px; }
 legend { font-weight: 600; margin-bottom: 8px; }
 .choice { display: flex; gap: 10px; align-items: center; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); cursor: pointer; }
@@ -19,6 +20,7 @@ label.field input { min-height: 48px; padding: 0 14px; border: 1px solid var(--l
 .hint-text { font-weight: 400; color: var(--muted); }
 .error { color: var(--danger); margin: 16px 0 0; }
 .pay { margin-top: 24px; width: 100%; justify-content: center; }
+.terms { text-align: center; margin: 12px 0 0; }
 {% endblock %}
 {% block body %}
 <main class="page">
@@ -37,7 +39,7 @@ label.field input { min-height: 48px; padding: 0 14px; border: 1px solid var(--l
       </div>
       {% endfor %}
     </div>
-    <div class="summary"><span class="muted">Total</span><strong>{{ totals.UGX }} <span class="muted">or {{ totals.USD }}</span></strong></div>
+    <div class="summary"><span>{{ quantity }} photo{{ quantity|pluralize }} · <strong>{{ totals.UGX }}</strong></span><span class="muted">or {{ totals.USD }} by card</span></div>
 
     <form method="post" action="{% url 'shop-checkout' gallery.public_token %}" data-checkout>
       {% csrf_token %}
@@ -53,7 +55,8 @@ label.field input { min-height: 48px; padding: 0 14px; border: 1px solid var(--l
         <input name="email" type="email" autocomplete="email" required value="{{ form.email|default:'' }}">
       </label>
       {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
-      <button class="btn pay" type="submit">Pay and download</button>
+      <button class="btn pay" type="submit">Pay securely</button>
+      <p class="helper terms">Your photos unlock as soon as the payment is confirmed. <a href="{% url 'purchase-terms' %}">Terms and refunds</a>{% if support_email %} · <a href="mailto:{{ support_email }}">Help with a payment</a>{% endif %}</p>
     </form>
   {% else %}
     <p class="muted">Your cart is empty. Open a photo and choose "Add to cart", or buy the whole gallery.</p>

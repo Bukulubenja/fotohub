@@ -205,3 +205,53 @@ class TestProfile:
 
         assert response.status_code == 302
         assert response["Location"] == url("public-gallery-page", published)
+
+
+class TestTrustCopy:
+    def test_gallery_states_privacy_and_how_to_ask_for_a_takedown(
+        self, client: Client, published, settings
+    ):
+        settings.SUPPORT_EMAIL = "help@example.com"
+        ready_photo(published)
+
+        html = client.get(url("public-gallery-page", published)).content.decode()
+
+        assert "Private gallery" in html
+        assert "This is a private event gallery." in html
+        assert "Need an image reviewed or removed?" in html
+        assert 'href="mailto:help@example.com?subject=Takedown%20request' in html
+
+    def test_without_a_support_address_guests_are_sent_to_the_photographer(
+        self, client: Client, published, settings
+    ):
+        settings.SUPPORT_EMAIL = ""
+
+        html = client.get(url("public-gallery-page", published)).content.decode()
+
+        assert "mailto:" not in html
+        assert f"{url('public-gallery-profile', published)}#photographer" in html
+
+    def test_cart_links_the_terms(self, client: Client, published):
+        photo = ready_photo(published)
+        client.post(url("shop-cart-add", published), {"photo": [str(photo.pk)]})
+
+        html = client.get(url("shop-cart", published)).content.decode()
+
+        assert "1 photo · <strong>UGX 900</strong>" in html
+        assert f'href="{reverse("purchase-terms")}"' in html
+        assert "Pay securely" in html
+
+    def test_terms_page_shows_current_prices(self, client: Client, settings):
+        settings.SUPPORT_EMAIL = "help@example.com"
+
+        html = client.get(reverse("purchase-terms")).content.decode()
+
+        assert "UGX 900 by mobile money or $0.24 by card" in html
+        assert "mailto:help@example.com" in html
+
+    def test_pending_order_uses_the_blueprint_wording(self, client: Client, published):
+        order = make_order(published, [ready_photo(published)], status=Order.Status.PENDING)
+
+        html = client.get(reverse("shop-order", args=[order.token])).content.decode()
+
+        assert "Keep this page open or check your purchases shortly." in html

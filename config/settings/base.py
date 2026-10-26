@@ -51,6 +51,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "galleries.context_processors.support",
             ],
         },
     },
@@ -199,6 +200,9 @@ SHOP = {
 # Public base URL, for links in emails (receipts, reminders).
 SITE_URL = env("SITE_URL", default="http://127.0.0.1:8000")
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="FotoHub <photos@fotohub.ug>")
+# Where guests reach FotoHub about payments and takedown requests. Empty: pages point them
+# to the photographer instead.
+SUPPORT_EMAIL = env("SUPPORT_EMAIL", default="")
 # Django 6.1 MAILERS (EMAIL_BACKEND is deprecated). Console in development; production sets
 # MAILER_BACKEND to SMTP or a provider backend, with its OPTIONS, at deployment (phase 4).
 MAILERS = {

@@ -60,6 +60,12 @@
     </div>
     {% endif %}
   </section>
+
+  <section class="section" aria-labelledby="help">
+    <h2 id="help">Help</h2>
+    {% include "galleries/public/_takedown.html" %}
+    <p class="helper"><a href="{% url 'purchase-terms' %}">Buying photos: terms and refunds</a></p>
+  </section>
 </main>
 
 {% include "galleries/public/_nav.html" with active="profile" %}

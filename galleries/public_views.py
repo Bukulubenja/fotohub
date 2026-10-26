@@ -280,6 +280,16 @@ def profile_page(request: HttpRequest, token: str) -> HttpResponse:
     return render(request, "galleries/public/profile.html", context)
 
 
+@require_GET
+def terms_page(request: HttpRequest) -> HttpResponse:
+    """Purchase terms and refunds, linked from every cart (blueprint: trust at checkout)."""
+    context = {
+        "price_ugx": format_money("UGX", price("UGX").unit_minor),
+        "price_usd": format_money("USD", price("USD").unit_minor),
+    }
+    return render(request, "galleries/public/terms.html", context)
+
+
 @require_POST
 @private_page
 def unlock(request: HttpRequest, token: str) -> HttpResponse:

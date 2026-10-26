@@ -17,6 +17,7 @@
 <main class="page">
   {% if profile %}<div class="eyebrow">{{ profile.display_name }}</div>{% endif %}
   <h1>Your photos</h1>
+  <p class="lead">Payment confirmed. Your photos are ready to download.</p>
   <p class="muted">Paid {{ total }} for {{ order.quantity }} photo{{ order.quantity|pluralize }}{% if event %} from {{ event.title }}{% endif %}. Keep this page's link: it's how you get back to your photos. We also emailed it to {{ order.email }}.</p>
   <div class="actions">
     <form method="post" action="{% url 'shop-order-archive-request' order.token %}">{% csrf_token %}<button class="btn" type="submit">Download all as ZIP</button></form>
@@ -37,7 +38,8 @@
   <div class="card">
     {% if order.status == "pending" %}
       <div class="spinner" aria-hidden="true"></div>
-      <h1>Waiting for your payment</h1>
+      <h1>Confirming your payment</h1>
+      <p>We’re confirming your payment. Keep this page open or check your purchases shortly.</p>
       <p class="muted" role="status">{% if order.currency == "UGX" %}Approve {{ total }} on {{ order.phone }} when the mobile money prompt appears.{% else %}Finishing your card payment of {{ total }}.{% endif %} This page updates by itself.</p>
     {% else %}
       <h1>The payment didn't go through</h1>
