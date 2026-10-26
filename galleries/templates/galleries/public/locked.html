@@ -9,9 +9,8 @@
 {% block style %}
 form { display: grid; gap: 12px; margin-top: 24px; text-align: left; }
 label { font-weight: 600; font-size: 14px; }
-input[type=password] { min-height: 48px; padding: 0 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--text); font: 16px var(--sans); }
-.error { color: #b3261e; font-size: 14px; margin: 0; }
-@media (prefers-color-scheme: dark) { .error { color: #f2b8b5; } }
+input[type=password] { min-height: 48px; padding: 0 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--text); font: 16px var(--sans); }
+.error { color: var(--danger); font-size: 14px; margin: 0; }
 .btn { justify-content: center; }
 {% endblock %}
 {% block body %}

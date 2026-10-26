@@ -1,4 +1,4 @@
-{% load branding %}<!doctype html>
+{% load static %}<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -7,71 +7,83 @@
 <title>{% block title %}FotoHub{% endblock %}</title>
 {% block meta %}{% endblock %}
 <style>
-{% with light=profile.brand_color|accent:"light" dark=profile.brand_color|accent:"dark" %}
-/* 60% page (--bg), 30% cards and lines (--surface, --line), 10% the photographer's accent,
-   kept for calls to action. --bg values are mirrored in galleries/templatetags/branding.py. */
+/* Inter, self-hosted (SIL OFL, see the OFL.txt beside it): one 48 KB variable file. */
+@font-face {
+  font-family: "Inter"; font-style: normal; font-weight: 100 900; font-display: swap;
+  src: url("{% static 'galleries/fonts/inter-latin-wght-normal.woff2' %}") format("woff2");
+}
+/* FotoHub blueprint palette: navy ink, violet for actions and the active tab, teal for success,
+   warm highlight for badges, cool canvas. 60% canvas, 30% cards and lines, 10% violet. */
 :root {
-  --accent: {{ light }}; --accent-ink: {{ light|ink }};
-  --bg: #f7f5f1; --surface: #ffffff; --text: #1d1c1a; --muted: #6b665e; --line: #e4dfd6;
-  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
-  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --h2: 400 24px/1.25 var(--serif);
+  --ink: #132238; --text: #132238; --muted: #5b6578;
+  --bg: #f7f8fa; --surface: #ffffff; --line: #e2e8f0;
+  --accent: #6d5ce8; --accent-ink: #ffffff;
+  --success: #13a89e; --success-text: #0b7a72; --highlight: #f5b942; --danger: #b42318;
+  --sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* Type scale: page title 22-36px, section 18px, body 16px, helper 13px. */
+  --title: 700 clamp(24px, 2.4vw + 14px, 36px)/1.15 var(--sans);
+  --h2: 600 18px/1.3 var(--sans);
   --measure: 65ch; /* comfortable line length for paragraphs */
+  --radius: 12px;
   color-scheme: light dark;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --accent: {{ dark }}; --accent-ink: {{ dark|ink }};
-    --bg: #121110; --surface: #1c1b19; --text: #f1eee8; --muted: #a39d93; --line: #2e2c28;
+    --text: #e8ecf4; --muted: #9aa6ba; --bg: #0b1220; --surface: #132238; --line: #24324a;
+    --success-text: #2cc4b8; --danger: #f2b8b5;
   }
 }
-{% endwith %}
 * { box-sizing: border-box; }
 /* Author display rules (e.g. .btn's inline-flex) would otherwise unhide [hidden] elements. */
 [hidden] { display: none !important; }
-body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 var(--sans); }
+body {
+  margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
 a { color: inherit; }
 .wrap { max-width: 1240px; margin: 0 auto; padding: 0 16px; }
 .btn {
-  display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 20px;
-  border: 0; border-radius: 999px; background: var(--accent); color: var(--accent-ink);
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 48px; padding: 0 20px; border: 0; border-radius: var(--radius);
+  background: var(--accent); color: var(--accent-ink);
   font: 600 15px/1 var(--sans); text-decoration: none; cursor: pointer;
 }
-.btn.ghost { background: transparent; color: var(--text); box-shadow: inset 0 0 0 1px var(--line); }
+.btn.ghost { background: var(--surface); color: var(--text); box-shadow: inset 0 0 0 1px var(--line); }
 .btn:focus-visible, a:focus-visible, input:focus-visible, button:focus-visible {
   outline: 3px solid var(--accent); outline-offset: 2px;
 }
-.banner { background: #fff3c4; color: #3d3300; font-size: 14px; padding: 10px 16px; text-align: center; }
-.eyebrow { color: var(--muted); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; }
-h1 { font: 400 clamp(32px, 6vw, 56px)/1.1 var(--serif); margin: 8px 0; letter-spacing: -.01em; }
+.banner { background: #fff4d6; color: #4a3500; font-size: 14px; padding: 10px 16px; text-align: center; }
+.eyebrow { color: var(--muted); font: 600 13px/1.4 var(--sans); letter-spacing: .06em; text-transform: uppercase; }
+h1 { font: var(--title); margin: 4px 0 8px; letter-spacing: -.02em; }
 .center { min-height: 100svh; display: grid; place-items: center; padding: 32px 16px; text-align: center; }
 .card { width: 100%; max-width: 420px; }
 .muted { color: var(--muted); }
+.helper { font-size: 13px; color: var(--muted); }
 .footer { padding: 40px 16px 56px; text-align: center; color: var(--muted); font-size: 13px; }
-/* Tab bar: a floating dark dock, the same in both themes so it also sits on the photo intro. */
+/* Tab bar: a navy dock, the same in both themes so it also sits on the photo intro. */
 body.has-nav { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 .tabbar {
   position: fixed; z-index: 10; left: 50%; bottom: max(12px, env(safe-area-inset-bottom));
   transform: translateX(-50%); width: min(420px, calc(100% - 24px));
-  display: grid; grid-template-columns: repeat(4, 1fr); padding: 6px;
-  background: rgba(16, 18, 24, .86); border: 1px solid rgba(255, 255, 255, .08); border-radius: 20px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, .28);
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 6px;
+  background: rgba(19, 34, 56, .94); border: 1px solid rgba(255, 255, 255, .08); border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(11, 18, 32, .3);
   -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
 }
 .tabbar a {
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
-  min-height: 52px; border-radius: 14px; color: #9b968e; text-decoration: none;
-  font: 500 11px/1 var(--sans); letter-spacing: .02em; transition: color .15s, background-color .15s;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  min-height: 52px; border-radius: 14px; color: #9aa6ba; text-decoration: none;
+  font: 500 11px/1 var(--sans); transition: color .15s, background-color .15s;
 }
-.tabbar a[aria-current="page"] { color: #fff; background: rgba(255, 255, 255, .08); }
+.tabbar a[aria-current="page"] { color: #fff; background: var(--accent); font-weight: 600; }
 @media (hover: hover) { .tabbar a:hover { color: #fff; } }
 .tabbar a:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
 .tabbar svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .tabbar a[aria-current="page"] svg { stroke-width: 2; }
 .tab-icon { position: relative; display: inline-flex; }
 .badge {
-  position: absolute; top: -5px; left: 14px; min-width: 17px; height: 17px; padding: 0 4px;
-  border-radius: 999px; background: #f1eee8; color: #121110; font: 700 10px/17px var(--sans); text-align: center;
+  position: absolute; top: -6px; left: 14px; min-width: 18px; height: 18px; padding: 0 5px;
+  border-radius: 999px; background: var(--highlight); color: var(--ink); font: 700 11px/18px var(--sans); text-align: center;
 }
 {% block style %}{% endblock %}
 </style>

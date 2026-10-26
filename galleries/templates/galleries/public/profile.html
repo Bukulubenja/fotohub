@@ -9,18 +9,15 @@
 .list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .row {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface);
+  padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface);
   text-decoration: none;
 }
 .row strong { display: block; }
 .row small { color: var(--muted); font-size: 13px; }
-.status { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--line); white-space: nowrap; }
-.status.paid { background: #dff3e4; color: #14532d; }
-.status.failed { background: #fde2e1; color: #7f1d1d; }
-@media (prefers-color-scheme: dark) {
-  .status.paid { background: #163323; color: #b7e4c7; }
-  .status.failed { background: #3b1717; color: #f2b8b5; }
-}
+.status { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+.status.paid { background: rgba(19, 168, 158, .14); color: var(--success-text); }
+.status.pending { background: rgba(245, 185, 66, .22); color: var(--text); }
+.status.failed { background: rgba(180, 35, 24, .12); color: var(--danger); }
 .contact { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 {% endblock %}
 {% block body %}

@@ -12,7 +12,7 @@
   <div class="lb-bottom">
     <button class="lb-btn" type="button" data-prev aria-label="Previous photo">‹ Prev</button>
     <a class="lb-btn" data-download href="#" hidden>Download</a>
-    <button class="lb-btn" type="button" data-add data-url="{% url 'shop-cart-add' gallery.public_token %}" hidden>Add to cart · {{ unit_price }}</button>
+    <button class="lb-btn lb-add" type="button" data-add data-url="{% url 'shop-cart-add' gallery.public_token %}" hidden>Add to cart · {{ unit_price }}</button>
     <button class="lb-btn" type="button" data-next aria-label="Next photo">Next ›</button>
   </div>
 </dialog>
@@ -100,6 +100,7 @@
     add.hidden = owned;
     add.disabled = inCart.has(tile.dataset.photo);
     add.textContent = add.disabled ? "In your cart ✓" : addLabel;
+    add.classList.toggle("is-in-cart", add.disabled);
     showFavourite(tile.dataset.photo);
     prev.disabled = i === 0;
     next.disabled = i === all.length - 1 && !moreLink;
@@ -127,6 +128,7 @@
       setBadge("[data-cart-count]", (await post(add.dataset.url, photo)).count);
       inCart.add(photo);
       add.textContent = "In your cart ✓";
+      add.classList.add("is-in-cart");
     } catch {
       add.disabled = false;
       add.textContent = "Couldn't add. Tap to retry";

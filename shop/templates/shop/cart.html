@@ -9,7 +9,7 @@
 .item form { position: absolute; top: 4px; right: 4px; margin: 0; }
 .item button { width: 32px; height: 32px; border: 0; border-radius: 50%; background: rgba(0,0,0,.6); color: #fff; font-size: 18px; line-height: 1; cursor: pointer; }
 .summary { display: flex; justify-content: space-between; align-items: baseline; border-top: 1px solid var(--line); padding-top: 16px; }
-.summary strong { font: 400 28px/1.2 var(--serif); }
+.summary strong { font: 700 24px/1.2 var(--sans); }
 fieldset { border: 0; padding: 0; margin: 24px 0 0; display: grid; gap: 10px; }
 legend { font-weight: 600; margin-bottom: 8px; }
 .choice { display: flex; gap: 10px; align-items: center; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); cursor: pointer; }
@@ -17,8 +17,7 @@ legend { font-weight: 600; margin-bottom: 8px; }
 label.field { display: grid; gap: 6px; font-weight: 600; font-size: 14px; margin-top: 16px; }
 label.field input { min-height: 48px; padding: 0 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--text); font: 16px var(--sans); }
 .hint-text { font-weight: 400; color: var(--muted); }
-.error { color: #b3261e; margin: 16px 0 0; }
-@media (prefers-color-scheme: dark) { .error { color: #f2b8b5; } }
+.error { color: var(--danger); margin: 16px 0 0; }
 .pay { margin-top: 24px; width: 100%; justify-content: center; }
 {% endblock %}
 {% block body %}

@@ -3,10 +3,13 @@
 import gzip
 import json
 import re
+from pathlib import Path
 from urllib.parse import unquote
 
 import pytest
+from django.contrib.staticfiles import finders
 from django.http import HttpResponse
+from django.templatetags.static import static
 from django.test import Client
 from django.urls import reverse
 
@@ -20,6 +23,7 @@ pytestmark = pytest.mark.django_db
 # the cover (~150 KB) and the first thumbnails (20-40 KB each) have room.
 MAX_GZIPPED_HTML_BYTES = 20 * 1024
 MAX_EAGER_IMAGES = 6
+MAX_FONT_BYTES = 64 * 1024  # Inter, latin subset, all weights in one variable file
 
 
 @pytest.fixture
@@ -117,7 +121,17 @@ class TestDataBudget:
 
         assert '<link rel="stylesheet"' not in html
         assert "<script src=" not in html
-        assert "@font-face" not in html and "fonts.googleapis" not in html
+        assert "fonts.googleapis" not in html and "fonts.gstatic" not in html
+
+    def test_the_one_web_font_is_ours_and_small(self, client: Client, full_page):
+        """Inter (blueprint typeface) is the only extra download: self-hosted, cached after the
+        first visit, and small enough to keep the first screen far under 1 MB (plan §3.3)."""
+        html = page(client, full_page).content.decode()
+
+        sources = re.findall(r'url\("([^"]+)"\)', html)
+        assert sources == [static("galleries/fonts/inter-latin-wght-normal.woff2")]
+        font = finders.find("galleries/fonts/inter-latin-wght-normal.woff2")
+        assert Path(font).stat().st_size <= MAX_FONT_BYTES
 
     def test_images_reserve_their_space(self, client: Client, full_page):
         html = page(client, full_page).content.decode()
