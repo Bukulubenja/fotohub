@@ -169,7 +169,8 @@ export function Dashboard({ me, onLogout }: { me: Me; onLogout: () => void }) {
           </div>
         )}
         {gallery && <PublishControl gallery={gallery} onChange={replaceGallery} />}
-        {gallery && <StatsPanel key={gallery.id} galleryId={gallery.id} />}
+        {/* Its own key prefix: GalleryUploads below is keyed by the bare id. */}
+        {gallery && <StatsPanel key={`stats-${gallery.id}`} galleryId={gallery.id} />}
         {gallery && uploadsPaused && (
           <>
             <SharePanel gallery={gallery} />
