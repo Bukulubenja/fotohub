@@ -15,6 +15,7 @@ from rest_framework.views import APIView
 
 from billing import services as billing
 from galleries import access
+from galleries import stats as gallery_stats
 from galleries.models import Event, Gallery
 from galleries.serializers import (
     EventSerializer,
@@ -63,6 +64,11 @@ class GalleryViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def unpublish(self, request: Request, pk: str | None = None) -> Response:
         return self._transition(unpublish_gallery)
+
+    @action(detail=True, methods=["get"])
+    def stats(self, request: Request, pk: str | None = None) -> Response:
+        """Views, visitors, favourites, orders and gross sales for this gallery."""
+        return Response(gallery_stats.summary(self.get_object()))
 
     @action(detail=True, methods=["post"], url_path="rotate-token")
     def rotate_token(self, request: Request, pk: str | None = None) -> Response:

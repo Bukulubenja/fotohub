@@ -6,6 +6,7 @@ import { useUploadQueue } from '../upload/useUploadQueue'
 import { BillingPanel } from './BillingPanel'
 import { NewEventForm } from './NewEventForm'
 import { PublishControl } from './PublishControl'
+import { StatsPanel } from './StatsPanel'
 import { SharePanel } from './SharePanel'
 import { UploadPanel } from './UploadPanel'
 
@@ -168,6 +169,7 @@ export function Dashboard({ me, onLogout }: { me: Me; onLogout: () => void }) {
           </div>
         )}
         {gallery && <PublishControl gallery={gallery} onChange={replaceGallery} />}
+        {gallery && <StatsPanel key={gallery.id} galleryId={gallery.id} />}
         {gallery && uploadsPaused && (
           <>
             <SharePanel gallery={gallery} />

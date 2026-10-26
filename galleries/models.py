@@ -104,3 +104,25 @@ class Gallery(models.Model):
 
     def is_viewable(self, now: datetime.datetime | None = None) -> bool:
         return self.status == self.Status.PUBLISHED and not self.is_expired(now)
+
+
+class GalleryDayStats(models.Model):
+    """Per-gallery daily counters for the photographer's stats (blueprint: event insights).
+
+    Sales come from orders; only what orders can't tell is counted here.
+    """
+
+    gallery = models.ForeignKey(Gallery, on_delete=models.CASCADE, related_name="day_stats")
+    day = models.DateField()
+    views = models.PositiveIntegerField(default=0)  # full gallery page loads by guests
+    visitors = models.PositiveIntegerField(default=0)  # first view per browser per day
+    favourites = models.IntegerField(default=0)  # hearts added minus removed that day
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["gallery", "day"], name="one_stats_row_per_gallery_day")
+        ]
+        verbose_name_plural = "gallery day stats"
+
+    def __str__(self) -> str:
+        return f"{self.gallery} {self.day}"

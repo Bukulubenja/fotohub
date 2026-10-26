@@ -28,7 +28,7 @@ from rest_framework.throttling import BaseThrottle, ScopedRateThrottle
 from assets.gallery_media import cover_image, download_url, gallery_photos, ready_photos
 from assets.models import Photo
 from billing import services as billing
-from galleries import access, favourites, sharing
+from galleries import access, favourites, sharing, stats
 from galleries.models import Gallery
 from galleries.views import NOINDEX, GalleryUnlockThrottle
 from shop import cart
@@ -225,7 +225,10 @@ def gallery_page(request: HttpRequest, token: str) -> HttpResponse:
         if context["owned"]:
             token = cart.latest_paid_order_token(request, gallery)
             context["order_url"] = reverse("shop-order", args=[token]) if token else ""
-    return render_grid(request, visit, context, "galleries/public/gallery.html")
+    response = render_grid(request, visit, context, "galleries/public/gallery.html")
+    if not request.GET.get("partial") and not visit.is_preview:
+        stats.record_view(request, response, gallery)
+    return response
 
 
 @require_GET
@@ -251,6 +254,8 @@ def favourite_toggle(request: HttpRequest, token: str) -> HttpResponse:
         if wants_json:
             return JsonResponse({"error": "That photo isn't in this gallery."}, status=400)
         raise Http404("That photo isn't in this gallery.")
+    if not visit.is_preview:
+        stats.record_favourite(visit.gallery, added=is_favourite)
     if wants_json:
         count = favourites.count(request, visit.gallery)
         return JsonResponse({"favourite": is_favourite, "count": count})

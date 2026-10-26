@@ -2,6 +2,7 @@ import { apiRequest } from './client'
 import type {
   EventInfo,
   Gallery,
+  GalleryStats,
   Me,
   Page,
   Payment,
@@ -26,6 +27,7 @@ export const auth = {
 export const galleries = {
   // First page is enough for the picker until galleries get their own search.
   list: () => apiRequest<Page<Gallery>>('GET', '/galleries/'),
+  stats: (id: string) => apiRequest<GalleryStats>('GET', `/galleries/${id}/stats/`),
 }
 
 export interface NewEvent {

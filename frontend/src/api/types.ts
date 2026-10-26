@@ -29,6 +29,17 @@ export interface Gallery {
   share_message: string
 }
 
+/** galleries/stats.py summary(). Gross is per currency, never converted or netted. */
+export interface GalleryStats {
+  views: number
+  visitors: number
+  favourites: number
+  orders: number
+  photos_sold: number
+  gross: { currency: string; amount_minor: number; formatted: string }[]
+  conversion_percent: number | null
+}
+
 export type PhotoStatus = 'uploading' | 'processing' | 'ready' | 'failed'
 
 export interface Photo {
