@@ -1,5 +1,6 @@
 from .base import *  # noqa: F403
 from .base import BILLING, FLUTTERWAVE, MIDDLEWARE, env
+from .mail import SMTP_BACKEND, mailer
 
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 
@@ -34,9 +35,9 @@ CSRF_COOKIE_SECURE = True
 
 # Email (receipts, reminders). Django 6.1 MAILERS; SMTP settings from the environment.
 MAILERS = {
-    "default": {
-        "BACKEND": env("MAILER_BACKEND", default="django.core.mail.backends.smtp.EmailBackend"),
-        "OPTIONS": {
+    "default": mailer(
+        env("MAILER_BACKEND", default=SMTP_BACKEND),
+        {
             "host": env("SMTP_HOST", default="localhost"),
             "port": env.int("SMTP_PORT", default=587),
             "username": env("SMTP_USERNAME", default=""),
@@ -44,7 +45,7 @@ MAILERS = {
             "use_tls": env.bool("SMTP_USE_TLS", default=True),
             "timeout": 20,
         },
-    }
+    )
 }
 
 LOGGING = {
