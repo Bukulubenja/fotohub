@@ -129,6 +129,7 @@ jobs:
           docker run -d --name web --network host $APP_ENV fotohub:ci
           for i in $(seq 1 30); do curl -fsS http://localhost:8000/healthz/ && break; sleep 2; done
           curl -fsS http://localhost:8000/healthz/ | grep '"database": "ok"'
-          curl -fsS -H "X-Forwarded-Proto: https" http://localhost:8000/ | grep -q '<div id="root">'
+          curl -fsS -H "X-Forwarded-Proto: https" http://localhost:8000/app/ | grep -q '<div id="root">'
+          curl -fsS -H "X-Forwarded-Proto: https" http://localhost:8000/ | grep -q 'name="passkey"'
           curl -fsS -H "X-Forwarded-Proto: https" http://localhost:8000/static/admin/css/base.css > /dev/null
           docker logs web
