@@ -2,11 +2,13 @@ from django.conf import settings
 from django.contrib import admin
 from django.urls import include, path
 
-from galleries import public_views
+from galleries import collection_views, public_views
 from ops import views as ops_views
 
 urlpatterns = [
-    path("", ops_views.dashboard, name="dashboard"),
+    path("", collection_views.home, name="home"),
+    path("app/", ops_views.dashboard, name="dashboard"),
+    path("c/<uuid:collection_id>/", collection_views.collection_page, name="public-collection"),
     path("healthz/", ops_views.healthz, name="healthz"),
     path(settings.ADMIN_URL, admin.site.urls),
     path("api/v1/", include("accounts.urls")),

@@ -1,0 +1,22 @@
+/* Leaf palette for the passkey and collection pages (owner's reference, 2026-10-28):
+   lime #C0DE7B, leaf #79B425, deep #054204, forest #1D6517, sky #55A6C3.
+   Lime, leaf and sky are too light for text on white, so they only tint, ring and highlight;
+   text and buttons use forest and deep green (forest on white is about 7:1). */
+:root {
+  --ink: #054204; --text: #0d2a10; --muted: #4b5e47;
+  --bg: #f4f8ee; --surface: #ffffff; --line: #dbe7cf;
+  --accent: #1d6517; --accent-ink: #ffffff;
+  --leaf: #79b425; --lime: #c0de7b; --sky: #55a6c3;
+  --lime-wash: #eef6dc; --success: #1d6517; --danger: #b42318;
+  --field-line: #6f8f5f; /* input outlines need 3:1 against their background (WCAG 1.4.11) */
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #c0de7b; --text: #e6f2dc; --muted: #a3b89c;
+    --bg: #04160a; --surface: #0b2610; --line: #1d4a1c;
+    --accent: #79b425; --accent-ink: #054204;
+    --lime-wash: #10331a; --success: #79b425; --danger: #f2b8b5; --field-line: #5a9446;
+  }
+}
+.btn:focus-visible, a:focus-visible, input:focus-visible, button:focus-visible { outline-color: var(--leaf); }
+.eyebrow { color: var(--accent); }

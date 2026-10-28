@@ -83,7 +83,7 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-# The photographer dashboard's Vite build (`npm run build`), served at the site root.
+# The photographer dashboard's Vite build (`npm run build`), served at /app/.
 DASHBOARD_BUILD = BASE_DIR / "frontend" / "dist"
 STATICFILES_DIRS = [("dashboard", DASHBOARD_BUILD)] if DASHBOARD_BUILD.is_dir() else []
 
@@ -108,6 +108,8 @@ REST_FRAMEWORK = {
         "gallery_unlock": "10/min",
         # Across all clients, so rotating IPs doesn't multiply password guesses.
         "gallery_unlock_global": "60/hour",
+        # Collection passkeys on the home page, per visitor (the passkey has ~40 random bits).
+        "collection_unlock": "10/min",
         # create + sign + complete per file; a 1,000-photo event stays well under this.
         "uploads": "1200/min",
         # "Download all" requests per visitor; the archives themselves are shared.

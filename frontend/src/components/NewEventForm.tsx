@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { galleryAdmin, type GalleryAdminApi } from '../api/endpoints'
-import type { EventInfo, Gallery } from '../api/types'
+import type { Collection, EventInfo, Gallery } from '../api/types'
 
 function today(): string {
   const now = new Date()
@@ -17,12 +17,17 @@ function endOfDay(date: string): string {
 export function NewEventForm({
   onCreated,
   onCancel,
+  collections = [],
   api = galleryAdmin,
 }: {
   onCreated: (gallery: Gallery) => void
   onCancel: () => void
+  collections?: Collection[]
   api?: GalleryAdminApi
 }) {
+  const offered = collections.filter((c) => c.status === 'active')
+  const [collection, setCollection] = useState('')
+  const [separate, setSeparate] = useState(false)
   const [title, setTitle] = useState('')
   const [date, setDate] = useState(today)
   const [location, setLocation] = useState('')
@@ -46,6 +51,8 @@ export function NewEventForm({
           event_date: date,
           location_label: location.trim(),
           description: description.trim(),
+          collection: collection || null,
+          separate_access: collection !== '' && separate,
         }))
       setEvent(created)
       const gallery = await api.createGallery({
@@ -103,6 +110,36 @@ export function NewEventForm({
             disabled={event !== null}
           />
         </label>
+        {offered.length > 0 && (
+          <div className="new-event__row">
+            <label>
+              Collection <span className="muted">(optional)</span>
+              <select
+                value={collection}
+                onChange={(e) => setCollection(e.target.value)}
+                disabled={event !== null}
+              >
+                <option value="">None</option>
+                {offered.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {collection && (
+              <label className="checkbox">
+                <input
+                  type="checkbox"
+                  checked={separate}
+                  onChange={(e) => setSeparate(e.target.checked)}
+                  disabled={event !== null}
+                />
+                Keep a separate password: the collection passkey won't open this event
+              </label>
+            )}
+          </div>
+        )}
         <div className="new-event__row">
           <label>
             Gallery password <span className="muted">(optional)</span>

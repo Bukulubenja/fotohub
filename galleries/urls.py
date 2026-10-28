@@ -4,6 +4,7 @@ from rest_framework.routers import SimpleRouter
 from galleries import views
 
 router = SimpleRouter()
+router.register("collections", views.CollectionViewSet, basename="collection")
 router.register("events", views.EventViewSet, basename="event")
 router.register("galleries", views.GalleryViewSet, basename="gallery")
 

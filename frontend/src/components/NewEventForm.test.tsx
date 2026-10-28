@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import type { Mock } from 'vitest'
 import type { GalleryAdminApi } from '../api/endpoints'
 import { ApiError } from '../api/client'
-import type { EventInfo, Gallery } from '../api/types'
+import type { Collection, EventInfo, Gallery } from '../api/types'
 import { NewEventForm } from './NewEventForm'
 
 const event: EventInfo = {
@@ -12,6 +12,8 @@ const event: EventInfo = {
   event_date: '2026-11-07',
   description: '',
   location_label: 'Kampala Serena',
+  collection: null,
+  separate_access: false,
 }
 
 const gallery: Gallery = {
@@ -100,4 +102,57 @@ test('a failed gallery step shows the error and retries without a second event',
   expect(api.createEvent).toHaveBeenCalledTimes(1)
   expect(api.createGallery).toHaveBeenCalledTimes(2)
   expect(onCreated).toHaveBeenCalledWith(gallery)
+})
+
+const school: Collection = {
+  id: 'c1',
+  name: 'St. Maria Goretti SS',
+  passkey: 'MGSS-7K4Q-X9AB',
+  status: 'active',
+  event_count: 0,
+  share_url: 'https://fotohub.ug/',
+  share_message: '',
+}
+
+test('without collections there is no collection field', () => {
+  render(<NewEventForm api={fakeApi()} onCreated={vi.fn()} onCancel={vi.fn()} />)
+
+  expect(screen.queryByLabelText(/Collection/)).not.toBeInTheDocument()
+})
+
+test('an event can join a collection', async () => {
+  const api = fakeApi()
+  render(<NewEventForm api={api} collections={[school]} onCreated={vi.fn()} onCancel={vi.fn()} />)
+  const user = await fillIn()
+  await user.selectOptions(screen.getByLabelText(/Collection/), 'c1')
+
+  await user.click(screen.getByRole('button', { name: 'Create event' }))
+
+  expect(api.createEvent).toHaveBeenCalledWith(
+    expect.objectContaining({ collection: 'c1', separate_access: false }),
+  )
+})
+
+test('an event in a collection can keep its own password', async () => {
+  const api = fakeApi()
+  render(<NewEventForm api={api} collections={[school]} onCreated={vi.fn()} onCancel={vi.fn()} />)
+  const user = await fillIn()
+  expect(screen.queryByLabelText(/Keep a separate password/)).not.toBeInTheDocument()
+  await user.selectOptions(screen.getByLabelText(/Collection/), 'c1')
+  await user.click(screen.getByLabelText(/Keep a separate password/))
+
+  await user.click(screen.getByRole('button', { name: 'Create event' }))
+
+  expect(api.createEvent).toHaveBeenCalledWith(
+    expect.objectContaining({ collection: 'c1', separate_access: true }),
+  )
+})
+
+test('archived collections are not offered', () => {
+  const archived = { ...school, id: 'c2', name: 'Old school', status: 'archived' as const }
+  render(
+    <NewEventForm api={fakeApi()} collections={[school, archived]} onCreated={vi.fn()} onCancel={vi.fn()} />,
+  )
+
+  expect(screen.queryByRole('option', { name: 'Old school' })).not.toBeInTheDocument()
 })

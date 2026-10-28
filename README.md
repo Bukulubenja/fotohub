@@ -19,6 +19,7 @@ Local development uses SQLite. Production uses PostgreSQL through `DATABASE_URL`
 
 ## Photographer dashboard (`frontend/`)
 
+Served at `/app/` (the site root is the guest home page, see Collections below).
 React + TypeScript (Vite). In development it proxies `/api` to Django, so the session cookie
 and CSRF work without CORS. Needs Node 20.19+ (CI uses Node 24 / npm 11; npm 10.8 has a
 resolver bug with this dependency tree, so use `npx npm@11 install` there).
@@ -48,7 +49,7 @@ server to sign arbitrary requests, which conflicts with the server-owned lifecyc
 |---|---|
 | `config/` | Settings split into `base`, `dev`, `test` and `prod` |
 | `accounts/` | Email-login `User`, `PhotographerProfile`, session auth API |
-| `galleries/` | `Event`, `Gallery`, state transitions (`services.py`), customer access policy (`access.py`) |
+| `galleries/` | `Collection`, `Event`, `Gallery`, state transitions (`services.py`), customer access policy (`access.py`), passkeys (`collections.py`) |
 | `frontend/` | Photographer dashboard: sign-in, gallery picker, upload manager |
 | `assets/` | `Photo`, `UploadSession`, quota reservation and upload lifecycle (`services.py`), R2 client (`storage.py`), pyvips variants (`processing.py`, Celery `tasks.py`) |
 
@@ -66,7 +67,10 @@ Planned app: `audit`.
 | GET | `/api/v1/auth/csrf/` | Sets CSRF cookie for the dashboard |
 | POST | `/api/v1/auth/register/` · `/login/` · `/logout/` | Session auth, throttled |
 | GET/PATCH | `/api/v1/me/` | Photographer profile |
-| CRUD | `/api/v1/events/` | Scoped to the signed-in photographer |
+| CRUD | `/api/v1/collections/` | Scoped to the signed-in photographer. `prefix` (2-8 letters, write-only) starts the passkey; read-only `passkey`, `event_count`, `share_url`, `share_message` (contains the passkey, by design) |
+| POST | `/api/v1/collections/{id}/rotate-passkey/` | New passkey, same prefix; every remembered phone is signed out |
+| GET | `/api/v1/collections/{id}/qr/` | Printable QR code (SVG) of `/?k=<passkey>` |
+| CRUD | `/api/v1/events/` | Scoped to the signed-in photographer. Optional `collection` (yours only) and `separate_access` |
 | CRUD | `/api/v1/galleries/` | Scoped through `event.owner`. Read-only `share_url` and `share_message` (WhatsApp-ready, never contains the password); writable `cover_photo` (a ready photo of that gallery) |
 | POST | `/api/v1/galleries/{id}/publish/` · `/unpublish/` · `/rotate-token/` | 409 on invalid transition |
 | GET | `/api/v1/public/galleries/{token}/` | Customer metadata. Drafts and unknown tokens return 404, expired galleries 410 |
@@ -111,6 +115,33 @@ cheap phone, and WhatsApp link previews need Open Graph tags in the HTML.
 - **ZIP archives** are shared per gallery, download setting and set of photos. They're built
   into R2 by a worker without holding the archive in memory, and expire after 24 hours (the
   `expire-archives` beat task). An archive built under an older download setting is never served.
+
+## Collections: one passkey for a group (`/`, `/c/<id>/`)
+
+A photographer who serves the same group again and again (a school, a church, a company) puts
+those events in a **collection**. Guests enter its passkey once and see every event in it.
+
+- **Passkey:** `MGSS-7K4QP-X9ABM`. The photographer picks the start (default: the name's
+  initials); FotoHub adds 10 random characters without look-alikes (no 0/O, 1/I/L), about 50
+  bits. Guests can type it in any case, with or without dashes.
+- **Home page `/`:** "Enter your passkey". Typing advances through boxes, pasting or a QR link
+  (`/?k=...`) fills them, and the check animates (Web Animations API, inline, no library). It
+  works without JavaScript as a plain form. **Wrong** guesses are limited to 10 a minute per
+  visitor (`collection_unlock`); right ones never count, so a school's parents on one Wi-Fi
+  aren't blocked. There's no site-wide cap: anyone could trip it and lock every guest out, so
+  the 50 random bits do that job. Signed-in photographers are sent to `/app/`, except from a
+  QR link.
+- **Remembered for 180 days from the last visit** in a signed, HttpOnly cookie holding only
+  `{collection id: access_version}`, not the session (`galleries/collections.py`). The home
+  page lists the collections this phone remembers.
+- **Collection page `/c/<id>/`:** published, unexpired galleries of its events, newest first,
+  each card fanning out up to four thumbnails; year chips appear when events span years.
+- **Access:** a remembered collection also opens its galleries' passwords
+  (`galleries/access.py`), except events marked `separate_access`, which keep their own
+  password and aren't listed. A new passkey (`rotate-passkey`) signs every phone out. Gallery
+  links seen on the page keep working like any gallery link.
+- **Archived** collections and lapsed photographers' collections can't be opened. Archiving or
+  reopening signs every phone out, like a new passkey.
 
 ## Selling photos (`shop/`)
 

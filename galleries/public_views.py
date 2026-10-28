@@ -73,7 +73,7 @@ class Unavailable(Exception):
 
 def resolve(request: HttpRequest, token: str) -> Visit:
     gallery = (
-        Gallery.objects.select_related("event__owner__profile", "cover_photo")
+        Gallery.objects.select_related("event__owner__profile", "event__collection", "cover_photo")
         .filter(public_token=token)
         .first()
     )

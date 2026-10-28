@@ -7,6 +7,7 @@ import re
 
 from django.conf import settings
 from django.db import transaction
+from django.urls import reverse
 from django.utils import timezone
 
 from accounts.models import PhotographerProfile
@@ -100,7 +101,8 @@ def start_payment(user, plan: Plan, periods: int, phone: str) -> tuple[Payment, 
         phone=payment.phone,
         email=user.email,
         description=f"FotoHub {plan.name}, {periods} x {plan.period_days} days",
-        return_url=settings.BILLING["RETURN_URL"] or settings.SITE_URL.rstrip("/") + "/",
+        return_url=settings.BILLING["RETURN_URL"]
+        or settings.SITE_URL.rstrip("/") + reverse("dashboard"),
     )
     try:
         checkout = provider.start(charge)

@@ -2,12 +2,71 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from assets.models import Photo
-from galleries import sharing
-from galleries.models import Event, Gallery
+from galleries import collections, sharing
+from galleries.models import Collection, Event, Gallery
 from galleries.services import update_gallery_settings
 
 
+class CollectionSerializer(serializers.ModelSerializer):
+    # Only on create: the readable start of the passkey. Defaults to the name's initials.
+    prefix = serializers.CharField(write_only=True, required=False, allow_blank=True, max_length=8)
+    event_count = serializers.SerializerMethodField()
+    share_url = serializers.SerializerMethodField()
+    share_message = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Collection
+        fields = [
+            "id",
+            "name",
+            "prefix",
+            "passkey",
+            "status",
+            "event_count",
+            "share_url",
+            "share_message",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "passkey", "created_at", "updated_at"]
+
+    def validate_prefix(self, value: str) -> str:
+        if not value:
+            return ""
+        try:
+            return collections.validate_prefix(value)
+        except ValueError as exc:
+            raise serializers.ValidationError(str(exc)) from exc
+
+    def get_event_count(self, collection: Collection) -> int:
+        annotated = getattr(collection, "event_count", None)
+        return annotated if annotated is not None else collection.events.count()
+
+    def get_share_url(self, collection: Collection) -> str:
+        return sharing.home_url(self.context["request"])
+
+    def get_share_message(self, collection: Collection) -> str:
+        return sharing.collection_message(collection, self.get_share_url(collection))
+
+    def create(self, validated_data: dict) -> Collection:
+        return collections.create_collection(
+            self.context["request"].user,
+            validated_data["name"],
+            prefix=validated_data.get("prefix", ""),
+        )
+
+    def update(self, instance: Collection, validated_data: dict) -> Collection:
+        validated_data.pop("prefix", None)  # a new passkey is its own action (rotate-passkey)
+        status = validated_data.pop("status", None)
+        instance = super().update(instance, validated_data)
+        return collections.set_status(instance, status) if status else instance
+
+
 class EventSerializer(serializers.ModelSerializer):
+    collection = serializers.PrimaryKeyRelatedField(
+        queryset=Collection.objects.none(), required=False, allow_null=True
+    )
+
     class Meta:
         model = Event
         fields = [
@@ -16,10 +75,19 @@ class EventSerializer(serializers.ModelSerializer):
             "event_date",
             "description",
             "location_label",
+            "collection",
+            "separate_access",
             "created_at",
             "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        request = self.context.get("request")
+        if request is not None and request.user.is_authenticated:
+            # Only the photographer's own collections are valid targets (tenant isolation).
+            self.fields["collection"].queryset = Collection.objects.owned_by(request.user)
 
 
 class GallerySerializer(serializers.ModelSerializer):

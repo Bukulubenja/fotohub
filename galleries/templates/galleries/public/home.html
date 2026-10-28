@@ -1,0 +1,331 @@
+{% extends "galleries/public/base.html" %}
+{% block title %}Find your photos · FotoHub{% endblock %}
+{% block style %}
+{% include "galleries/public/_leaf_theme.html" %}
+.card { max-width: 440px; }
+.panel {
+  margin-top: 24px; padding: 24px 20px; border: 1px solid var(--line); border-radius: 24px;
+  background: var(--surface); box-shadow: 0 18px 40px -28px rgba(5, 66, 4, .45);
+}
+form { display: grid; gap: 14px; text-align: left; }
+label, .label { font-weight: 600; font-size: 14px; }
+.error { color: var(--danger); font-size: 14px; margin: 0; text-align: center; }
+
+/* Without JavaScript: one plain field. */
+.plain input {
+  width: 100%; min-height: 52px; padding: 0 14px; border: 1.5px solid var(--field-line);
+  border-radius: var(--radius); background: var(--surface); color: var(--text);
+  font: 600 20px/1 var(--sans); letter-spacing: .08em; text-transform: uppercase;
+}
+
+/* With JavaScript: a short school code, then 4 + 4 boxes that advance as you type. */
+.keypad { display: grid; gap: 12px; justify-items: center; padding: 8px 0 4px; }
+.code {
+  width: 9.5ch; min-height: 44px; padding: 0 12px; border: 1.5px solid var(--field-line); border-radius: 999px;
+  background: var(--lime-wash); color: var(--ink); text-align: center;
+  font: 700 17px/1 var(--sans); letter-spacing: .12em; text-transform: uppercase;
+}
+.code::placeholder { color: var(--muted); opacity: .6; }
+.orbit { display: flex; justify-content: center; width: 100%; }
+.boxes {
+  display: grid; width: 100%; max-width: 380px; gap: 5px; align-items: center;
+  grid-template-columns: repeat(5, 1fr) 12px repeat(5, 1fr);
+}
+.box {
+  width: 100%; min-width: 0; aspect-ratio: 4 / 5; padding: 0; border: 1.5px solid var(--field-line); border-radius: 12px;
+  background: var(--surface); color: var(--text); text-align: center; caret-color: var(--accent);
+  font: 650 clamp(17px, 5vw, 22px)/1 var(--sans); font-variant-numeric: tabular-nums; text-transform: uppercase;
+  transition: border-color .15s, background-color .2s, color .2s, box-shadow .15s;
+}
+.box:focus, .code:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px rgba(121, 180, 37, .28); }
+.box.filled { border-color: var(--leaf); }
+.dash { width: 8px; height: 2px; justify-self: center; border-radius: 2px; background: var(--muted); opacity: .5; transition: opacity .2s; }
+.keypad .label, .code { transition: opacity .2s; }
+.keypad.checking .label, .keypad.checking .code, .keypad.checking .dash { opacity: 0; }
+.keypad.ok .box { background: var(--success); border-color: var(--success); color: var(--accent-ink); }
+.keypad.bad .boxes { animation: shake .42s cubic-bezier(.36, .07, .19, .97); }
+.keypad.bad .box.filled { border-color: var(--danger); }
+@keyframes shake {
+  20%, 60% { transform: translateX(-7px); } 40%, 80% { transform: translateX(7px); }
+}
+.actions { display: grid; gap: 10px; transition: opacity .2s; }
+form.busy .checking-hides { opacity: 0; pointer-events: none; }
+.chip {
+  justify-self: center; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 14px;
+  border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--accent);
+  font: 600 13px/1 var(--sans); cursor: pointer;
+}
+.chip svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+.remembered { margin-top: 32px; text-align: left; }
+.remembered h2 { font: var(--h2); margin: 0 0 12px; }
+.list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.row {
+  display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 10px 14px;
+  border: 1px solid var(--line); border-radius: 16px; background: var(--surface); text-decoration: none; font-weight: 600;
+}
+.row .mark {
+  flex: none; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px;
+  background: var(--lime-wash); color: var(--accent); font: 700 13px/1 var(--sans);
+}
+.row .go { margin-left: auto; color: var(--accent); font-size: 14px; }
+.signin { margin-top: 28px; }
+@media (prefers-reduced-motion: reduce) { .keypad.bad .boxes { animation: none; } }
+{% endblock %}
+{% block body %}
+<main class="center">
+  <div class="card">
+    <div class="eyebrow">FotoHub</div>
+    <h1>Find your photos</h1>
+    <p class="muted">Enter the passkey your photographer or school shared. You only need to do this once on this phone.</p>
+
+    <div class="panel">
+      <form id="passkey-form" method="post" action="{% url 'home' %}">
+        {% csrf_token %}
+        <div class="plain">
+          <label for="passkey">Passkey</label>
+          <input id="passkey" name="passkey" value="{{ passkey }}" placeholder="MGSS-7K4QP-X9ABM" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="40" required{% if not remembered %} autofocus{% endif %}{% if error %} aria-invalid="true" aria-describedby="passkey-error"{% endif %}>
+        </div>
+
+        <div class="keypad" id="keypad" hidden>
+          <span class="label" id="keypad-label">Passkey</span>
+          <input class="code" id="code" maxlength="8" placeholder="MGSS" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Passkey, first part (the letters before the first dash)">
+          <div class="orbit" id="orbit">
+            <div class="boxes" id="boxes" role="group" aria-labelledby="keypad-label">
+              {% for n in "0123456789" %}<input class="box" inputmode="text" maxlength="1" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Passkey character {{ forloop.counter }} of 10">{% if forloop.counter == 5 %}<span class="dash" aria-hidden="true"></span>{% endif %}{% endfor %}
+            </div>
+          </div>
+        </div>
+
+        <p class="error" id="passkey-error" role="alert"{% if not error %} hidden{% endif %}>{{ error }}</p>
+        <div class="actions checking-hides">
+          <button class="btn" type="submit">Open photos</button>
+          <button class="chip" type="button" id="paste" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="3" width="8" height="4" rx="1"/><path d="M16 5h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2"/></svg>Paste passkey</button>
+        </div>
+      </form>
+    </div>
+    <p class="helper">Got a gallery link instead? Just open the link.</p>
+
+    {% if remembered %}
+    <section class="remembered" aria-labelledby="remembered-heading">
+      <h2 id="remembered-heading">Your collections</h2>
+      <ul class="list">
+        {% for collection in remembered %}
+        <li><a class="row" href="{% url 'public-collection' collection.pk %}"><span class="mark" aria-hidden="true">{{ collection.passkey_prefix|slice:":3" }}</span>{{ collection.name }}<span class="go">Open</span></a></li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+
+    <p class="helper signin">Photographer? <a href="{% url 'dashboard' %}">Sign in to your dashboard</a></p>
+  </div>
+</main>
+<script>
+/* Passkey boxes: type, paste or scan (?k= fills them), then the boxes swing into a ring while
+   the server checks, turn green when it says yes, and shake when it says no. The plain field
+   stays the one the form submits, so this is only ever an enhancement. */
+(function () {
+  var form = document.getElementById("passkey-form");
+  var plain = document.getElementById("passkey");
+  var keypad = document.getElementById("keypad");
+  var code = document.getElementById("code");
+  var row = document.getElementById("boxes");
+  var orbit = document.getElementById("orbit");
+  var RING_AT_LEAST = 900; /* ms: a fast answer still shows the ring form and turn */
+  var boxes = Array.prototype.slice.call(row.querySelectorAll(".box"));
+  var errorEl = document.getElementById("passkey-error");
+  var pasteBtn = document.getElementById("paste");
+  var still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var RANDOM = boxes.length;
+  var HALF = RANDOM / 2;
+  var busy = false;
+  var spins = [];
+
+  if (!window.fetch || !Element.prototype.animate) return;
+  form.querySelector(".plain").hidden = true;
+  plain.removeAttribute("required");
+  keypad.hidden = false;
+
+  function clean(s) { return (s || "").toUpperCase().replace(/[^A-Z0-9]/g, ""); }
+  function randomPart() { return boxes.map(function (b) { return b.value; }).join(""); }
+  function complete() { return code.value.length >= 2 && randomPart().length === RANDOM; }
+
+  function sync() {
+    var r = randomPart();
+    plain.value = code.value + "-" + r.slice(0, HALF) + "-" + r.slice(HALF);
+    boxes.forEach(function (b) { b.classList.toggle("filled", b.value !== ""); });
+  }
+
+  function fill(raw, from) {
+    var n = clean(raw);
+    if (from === undefined && n.length > RANDOM) {
+      code.value = n.slice(0, n.length - RANDOM).slice(0, 8);
+      n = n.slice(-RANDOM);
+      from = 0;
+    }
+    from = from || 0;
+    for (var i = 0; i < n.length && from + i < RANDOM; i++) boxes[from + i].value = n[i];
+    sync();
+    var next = boxes.find(function (b) { return b.value === ""; });
+    (code.value.length < 2 ? code : next || boxes[RANDOM - 1]).focus();
+    if (complete()) submit();
+  }
+
+  function setError(message) {
+    errorEl.textContent = message;
+    errorEl.hidden = !message;
+    if (message) {
+      keypad.classList.remove("bad");
+      void keypad.offsetWidth; /* restart the shake */
+      keypad.classList.add("bad");
+    }
+  }
+
+  code.addEventListener("input", function () {
+    var typed = code.value;
+    if (clean(typed).length > 8) return fill(typed); /* the whole passkey, typed or autofilled */
+    var advance = /[-\s]$/.test(typed);
+    code.value = clean(typed).slice(0, 8);
+    sync();
+    if (advance && code.value.length >= 2) boxes[0].focus();
+  });
+  code.addEventListener("keydown", function (e) {
+    if ((e.key === "Enter" || e.key === "ArrowRight") && code.value.length >= 2 && code.selectionStart === code.value.length) {
+      if (e.key === "ArrowRight" || !complete()) { e.preventDefault(); boxes[0].focus(); }
+    }
+  });
+
+  boxes.forEach(function (box, i) {
+    box.addEventListener("input", function () {
+      var v = clean(box.value);
+      if (v.length > 1) return fill(v, i); /* autofill or a paste into one box */
+      box.value = v;
+      sync();
+      setError("");
+      if (v && i < RANDOM - 1) boxes[i + 1].focus();
+      if (complete()) submit();
+    });
+    box.addEventListener("keydown", function (e) {
+      if (e.key === "Backspace" && !box.value) {
+        e.preventDefault();
+        if (i > 0) { boxes[i - 1].value = ""; boxes[i - 1].focus(); } else code.focus();
+        sync();
+      } else if (e.key === "ArrowLeft") { e.preventDefault(); (i > 0 ? boxes[i - 1] : code).focus(); }
+      else if (e.key === "ArrowRight" && i < RANDOM - 1) { e.preventDefault(); boxes[i + 1].focus(); }
+    });
+    box.addEventListener("focus", function () { box.select(); });
+  });
+
+  keypad.addEventListener("paste", function (e) {
+    var text = (e.clipboardData || window.clipboardData).getData("text");
+    var i = boxes.indexOf(document.activeElement);
+    if (clean(text).length > RANDOM) { e.preventDefault(); fill(text); } /* a whole passkey */
+    else if (i >= 0 && clean(text)) { e.preventDefault(); fill(text, i); }
+    /* otherwise a school code pasted into its own field: let the browser paste it */
+  });
+
+  if (navigator.clipboard && navigator.clipboard.readText) {
+    pasteBtn.hidden = false;
+    pasteBtn.addEventListener("click", function () {
+      navigator.clipboard.readText().then(fill, function () { code.focus(); });
+    });
+  }
+
+  /* The ring: each box slides to a point on a circle around the row's centre, then the row
+     spins until the server answers. Each box turns the other way at the same speed, so its
+     letter stays upright while the ring goes round. */
+  var SLIDE_MS = 480, TURN_MS = 1600;
+  function ring() {
+    if (still) return;
+    var c = row.getBoundingClientRect();
+    var cx = c.left + c.width / 2, cy = c.top + c.height / 2;
+    var radius = Math.min(c.width * 0.26, 74);
+    var turn = { duration: TURN_MS, delay: SLIDE_MS, iterations: Infinity, easing: "linear" };
+    boxes.forEach(function (b, i) {
+      var r = b.getBoundingClientRect();
+      var angle = (i / RANDOM) * 2 * Math.PI - Math.PI / 2;
+      var dx = cx + Math.cos(angle) * radius - (r.left + r.width / 2);
+      var dy = cy + Math.sin(angle) * radius - (r.top + r.height / 2);
+      var spot = "translate(" + dx + "px," + dy + "px) scale(.8)";
+      spins.push(b.animate(
+        [{ transform: "none" }, { transform: spot }],
+        { duration: SLIDE_MS, easing: "cubic-bezier(.2,.8,.2,1)", fill: "forwards" }
+      ));
+      spins.push(b.animate(
+        [{ transform: spot + " rotate(0deg)" }, { transform: spot + " rotate(-360deg)" }], turn
+      ));
+    });
+    spins.push(row.animate([{ transform: "rotate(0deg)" }, { transform: "rotate(360deg)" }], turn));
+  }
+
+  function unring() {
+    spins.forEach(function (a) { a.cancel(); });
+    spins = [];
+  }
+
+  function wait(ms) { return new Promise(function (done) { setTimeout(done, ms); }); }
+
+  /* Green ring, a beat, then the whole (still spinning) ring shrinks into its centre. The
+     wrapper shrinks, not the boxes, so it never fights the spin or the boxes' positions. */
+  function collapse() {
+    if (still) return wait(250);
+    return wait(380).then(function () {
+      return orbit.animate(
+        [{ transform: "scale(1)", opacity: 1 }, { transform: "scale(.15)", opacity: 0 }],
+        { duration: 380, easing: "cubic-bezier(.6,0,.4,1)", fill: "forwards" }
+      ).finished;
+    });
+  }
+
+  function submit(event) {
+    if (event) event.preventDefault();
+    if (busy) return;
+    sync();
+    if (!complete()) {
+      setError("Fill in every box of the passkey.");
+      (code.value.length < 2 ? code : boxes.find(function (b) { return !b.value; })).focus();
+      return;
+    }
+    busy = true;
+    setError("");
+    keypad.classList.remove("bad", "ok");
+    keypad.classList.add("checking");
+    form.classList.add("busy");
+    document.activeElement && document.activeElement.blur();
+    ring();
+    var shown = wait(still ? 0 : RING_AT_LEAST);
+    fetch(form.action, {
+      method: "POST",
+      body: new FormData(form),
+      headers: { Accept: "application/json" },
+      credentials: "same-origin"
+    }).then(function (res) {
+      return res.json().then(function (data) { return { ok: res.ok, data: data }; });
+    }).then(function (result) {
+      return shown.then(function () { return result; });
+    }).then(function (result) {
+      if (!result.ok || !result.data.url) throw { refused: result.data.error || "" };
+      keypad.classList.add("ok");
+      return collapse().then(function () { window.location.assign(result.data.url); });
+    }).catch(function (err) {
+      unring();
+      busy = false;
+      keypad.classList.remove("checking");
+      form.classList.remove("busy");
+      /* Offline, or a reply that isn't ours (e.g. an expired CSRF page): post the plain form. */
+      if (!err || !err.refused) { form.submit(); return; }
+      setError(err.refused);
+      boxes[RANDOM - 1].focus();
+    });
+  }
+
+  form.addEventListener("submit", submit);
+
+  if (plain.value) fill(plain.value);
+  /* Opened from a QR code: take the passkey out of the address bar (and history). */
+  if (/[?&]k=/.test(location.search)) history.replaceState(null, "", location.pathname);
+  else if (!document.querySelector(".remembered")) code.focus();
+  if (!errorEl.hidden) setError(errorEl.textContent);
+})();
+</script>
+{% endblock %}

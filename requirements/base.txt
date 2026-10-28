@@ -8,3 +8,4 @@ celery[redis]>=5.4,<6
 pyvips>=3.0
 # Bundles libvips for Windows/macOS/Linux wheels; on servers you may use the distro libvips instead.
 pyvips-binary>=8.16
+segno>=1.6,<2  # QR codes for collection cards (pure Python, SVG output)

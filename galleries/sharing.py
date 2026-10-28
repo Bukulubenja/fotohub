@@ -1,14 +1,15 @@
 """Gallery links and ready-to-send messages (spec FR-24). WhatsApp is the main channel.
 
-Messages never contain the gallery password: the photographer sends it separately.
+Messages never contain the gallery password: the photographer sends it separately. A
+collection's passkey is the exception: sharing it once with the group is the whole point.
 """
 
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 
 from django.http import HttpRequest
 from django.urls import reverse
 
-from galleries.models import Gallery
+from galleries.models import Collection, Gallery
 
 WHATSAPP_SHARE = "https://wa.me/?text="
 
@@ -39,3 +40,24 @@ def guest_message(gallery: Gallery, url: str) -> str:
 
 def whatsapp_link(message: str) -> str:
     return WHATSAPP_SHARE + quote(message, safe="")
+
+
+def home_url(request: HttpRequest) -> str:
+    return request.build_absolute_uri(reverse("home"))
+
+
+def collection_qr_url(request: HttpRequest, collection: Collection) -> str:
+    """Where the printed QR code points: the home page with the passkey filled in."""
+    return f"{home_url(request)}?{urlencode({'k': collection.passkey})}"
+
+
+def collection_message(collection: Collection, url: str) -> str:
+    """What the photographer sends the group (a school's parents) once."""
+    return "\n".join(
+        [
+            f"Photos from {collection.name} are on FotoHub.",
+            f"Open {url} and enter the passkey {collection.passkey}",
+            "Every new event appears there, and your phone remembers the passkey.",
+            f"\u2014 {collection.owner.profile.display_name}",
+        ]
+    )

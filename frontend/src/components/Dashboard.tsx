@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
-import { auth, galleries as galleriesApi, photos, storage, uploadConfig } from '../api/endpoints'
-import type { Gallery, Me, StorageUsage, Subscription, UploadConfig } from '../api/types'
+import { auth, collectionsApi, galleries as galleriesApi, photos, storage, uploadConfig } from '../api/endpoints'
+import type { Collection, Gallery, Me, StorageUsage, Subscription, UploadConfig } from '../api/types'
 import { formatBytes, plural } from '../format'
 import { useUploadQueue } from '../upload/useUploadQueue'
 import { BillingPanel } from './BillingPanel'
+import { CollectionsPanel } from './CollectionsPanel'
 import { NewEventForm } from './NewEventForm'
 import { PublishControl } from './PublishControl'
 import { StatsPanel } from './StatsPanel'
@@ -89,12 +90,19 @@ export function Dashboard({ me, onLogout }: { me: Me; onLogout: () => void }) {
   const [usage, setUsage] = useState<StorageUsage | null>(null)
   const [error, setError] = useState('')
   const [creating, setCreating] = useState(false)
+  const [collections, setCollections] = useState<Collection[]>([])
+  const [showCollections, setShowCollections] = useState(false)
   // A state setter is stable, so BillingPanel doesn't refetch on every render.
   const [subscription, setSubscription] = useState<Subscription | null>(null)
   const uploadsPaused = subscription !== null && !subscription.can_upload
 
   const refreshUsage = useCallback(() => {
     storage.usage().then(setUsage, () => undefined)
+  }, [])
+
+  // Optional extra: a failure here leaves the collection field out, nothing else.
+  const refreshCollections = useCallback(() => {
+    collectionsApi.list().then(setCollections, () => undefined)
   }, [])
 
   useEffect(() => {
@@ -107,7 +115,8 @@ export function Dashboard({ me, onLogout }: { me: Me; onLogout: () => void }) {
       })
       .catch((err: Error) => setError(err.message))
     refreshUsage()
-  }, [refreshUsage])
+    refreshCollections()
+  }, [refreshUsage, refreshCollections])
 
   const replaceGallery = useCallback((updated: Gallery) => {
     setGalleryList((list) => list.map((g) => (g.id === updated.id ? updated : g)))
@@ -117,7 +126,12 @@ export function Dashboard({ me, onLogout }: { me: Me; onLogout: () => void }) {
     setGalleryList((list) => [created, ...list])
     setSelected(created.id)
     setCreating(false)
+    refreshCollections() // event counts
   }
+
+  const addCollection = (created: Collection) => setCollections((list) => [...list, created])
+  const replaceCollection = (updated: Collection) =>
+    setCollections((list) => list.map((c) => (c.id === updated.id ? updated : c)))
 
   const logout = async () => {
     await auth.logout().catch(() => undefined)
@@ -132,6 +146,9 @@ export function Dashboard({ me, onLogout }: { me: Me; onLogout: () => void }) {
         <strong>FotoHub</strong>
         <StorageMeter usage={usage} />
         <span className="muted">{me.display_name}</span>
+        <button type="button" className="link" aria-expanded={showCollections} onClick={() => setShowCollections((v) => !v)}>
+          Collections
+        </button>
         <button type="button" className="link" onClick={logout}>
           Sign out
         </button>
@@ -140,7 +157,12 @@ export function Dashboard({ me, onLogout }: { me: Me; onLogout: () => void }) {
       <main className="content">
         <BillingPanel onChange={setSubscription} />
         {error && <p className="notice notice--error" role="alert">{error}</p>}
-        {creating && <NewEventForm onCreated={addGallery} onCancel={() => setCreating(false)} />}
+        {showCollections && (
+          <CollectionsPanel collections={collections} onCreated={addCollection} onUpdated={replaceCollection} />
+        )}
+        {creating && (
+          <NewEventForm collections={collections} onCreated={addGallery} onCancel={() => setCreating(false)} />
+        )}
         {config && galleryList.length === 0 && !error && !creating && (
           <section className="panel empty">
             <p className="muted">Create your first event: you get a private gallery to upload photos to and share with guests.</p>

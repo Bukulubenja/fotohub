@@ -9,6 +9,7 @@ import logging
 
 from django.conf import settings
 from django.core.mail import send_mail
+from django.urls import reverse
 from django.utils import timezone
 
 from billing import lifecycle
@@ -28,7 +29,7 @@ def stage(standing: lifecycle.Standing) -> str:
 def message(subscription: Subscription, current: str) -> tuple[str, str]:
     what = "free trial" if subscription.plan.code == settings.BILLING["TRIAL_PLAN"] else "plan"
     ends = timezone.localtime(subscription.paid_until).strftime("%d %B %Y").lstrip("0")
-    renew = f"Renew from your dashboard: {settings.SITE_URL.rstrip('/')}/"
+    renew = f"Renew from your dashboard: {settings.SITE_URL.rstrip('/')}{reverse('dashboard')}"
     texts = {
         lifecycle.State.DUE: (
             f"Your FotoHub {what} ends on {ends}",

@@ -72,6 +72,11 @@ def cover_image(gallery: Gallery) -> Image | None:
     return _image(photo, "cover") if photo else None
 
 
+def thumb(photo: Photo) -> Image | None:
+    """A photo at grid size, for lists of galleries (the collection page)."""
+    return _image(photo, "thumb")
+
+
 @dataclass(frozen=True)
 class DownloadSource:
     key: str

@@ -13,6 +13,24 @@ export interface EventInfo {
   event_date: string
   description: string
   location_label: string
+  /** The collection (e.g. a school) whose passkey opens this event's galleries. */
+  collection: string | null
+  /** In a collection, but its galleries keep their own password. */
+  separate_access: boolean
+}
+
+export type CollectionStatus = 'active' | 'archived'
+
+/** galleries/serializers.py CollectionSerializer. The passkey is meant to be shared. */
+export interface Collection {
+  id: string
+  name: string
+  passkey: string
+  status: CollectionStatus
+  event_count: number
+  /** The guest home page, and a WhatsApp-ready message naming it and the passkey. */
+  share_url: string
+  share_message: string
 }
 
 export type GalleryStatus = 'draft' | 'processing' | 'published' | 'archived' | 'deletion_pending'

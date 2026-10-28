@@ -41,7 +41,7 @@ docker compose -f deploy/docker-compose.yml --env-file deploy/.env ps        # a
 docker compose -f deploy/docker-compose.yml --env-file deploy/.env exec web python manage.py createsuperuser
 ```
 
-Open `https://<SITE_ADDRESS>/` and you should see the dashboard sign-in. The admin is at `https://<SITE_ADDRESS>/<DJANGO_ADMIN_URL>`.
+Open `https://<SITE_ADDRESS>/app/` and you should see the dashboard sign-in (the site root `/` is the guest passkey page). The admin is at `https://<SITE_ADDRESS>/<DJANGO_ADMIN_URL>`.
 
 ## 5. Connect the outside services
 

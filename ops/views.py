@@ -31,7 +31,7 @@ def healthz(request: HttpRequest) -> JsonResponse:
 @require_GET
 @never_cache
 def dashboard(request: HttpRequest) -> HttpResponse:
-    """The photographer dashboard (Vite build, collected as static files) at the site root."""
+    """The photographer dashboard (Vite build, collected as static files) at /app/."""
     try:
         with staticfiles_storage.open(DASHBOARD_INDEX) as index:
             return HttpResponse(index.read(), content_type="text/html; charset=utf-8")

@@ -1,5 +1,9 @@
+import io
 from collections.abc import Callable
 
+import segno
+from django.db.models import Count
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils.cache import patch_vary_headers
 from django.utils.decorators import method_decorator
@@ -14,10 +18,11 @@ from rest_framework.throttling import ScopedRateThrottle, SimpleRateThrottle
 from rest_framework.views import APIView
 
 from billing import services as billing
-from galleries import access
+from galleries import access, collections, sharing
 from galleries import stats as gallery_stats
-from galleries.models import Event, Gallery
+from galleries.models import Collection, Event, Gallery
 from galleries.serializers import (
+    CollectionSerializer,
     EventSerializer,
     GallerySerializer,
     LockedGallerySerializer,
@@ -30,6 +35,35 @@ from galleries.services import (
     rotate_gallery_token,
     unpublish_gallery,
 )
+
+QR_SCALE = 10  # SVG units per module; the vector scales cleanly for printing anyway
+QR_BORDER = 2
+
+
+class CollectionViewSet(viewsets.ModelViewSet):
+    serializer_class = CollectionSerializer
+
+    def get_queryset(self):
+        return (
+            Collection.objects.owned_by(self.request.user)
+            .select_related("owner__profile")
+            .annotate(event_count=Count("events"))
+            .order_by("name")
+        )
+
+    @action(detail=True, methods=["post"], url_path="rotate-passkey")
+    def rotate_passkey(self, request: Request, pk: str | None = None) -> Response:
+        """A new passkey (same prefix). Every phone that remembered the old one is signed out."""
+        collection = collections.rotate_passkey(self.get_object())
+        return Response(self.get_serializer(collection).data)
+
+    @action(detail=True, methods=["get"])
+    def qr(self, request: Request, pk: str | None = None) -> HttpResponse:
+        """A printable QR code (SVG) for table cards and notices. It fills in the passkey."""
+        url = sharing.collection_qr_url(request, self.get_object())
+        buffer = io.BytesIO()
+        segno.make(url, error="m").save(buffer, kind="svg", scale=QR_SCALE, border=QR_BORDER)
+        return HttpResponse(buffer.getvalue(), content_type="image/svg+xml")
 
 
 class EventViewSet(viewsets.ModelViewSet):

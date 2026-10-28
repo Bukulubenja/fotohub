@@ -1,5 +1,6 @@
 import { apiRequest } from './client'
 import type {
+  Collection,
   EventInfo,
   Gallery,
   GalleryStats,
@@ -35,7 +36,26 @@ export interface NewEvent {
   event_date: string
   location_label: string
   description: string
+  collection?: string | null
+  separate_access?: boolean
 }
+
+/** Collections (one passkey for a group's events); swapped for a fake in tests. */
+export interface CollectionsApi {
+  list(): Promise<Collection[]>
+  create(name: string, prefix: string): Promise<Collection>
+  rotatePasskey(id: string): Promise<Collection>
+}
+
+export const collectionsApi: CollectionsApi = {
+  // One page (25) is plenty: a photographer has a handful of regular clients.
+  list: async () => (await apiRequest<Page<Collection>>('GET', '/collections/')).results,
+  create: (name, prefix) => apiRequest('POST', '/collections/', { name, prefix }),
+  rotatePasskey: (id) => apiRequest('POST', `/collections/${id}/rotate-passkey/`),
+}
+
+/** A printable QR code (SVG) that opens the home page with the passkey filled in. */
+export const collectionQrUrl = (id: string) => `/api/v1/collections/${id}/qr/`
 
 export interface NewGallery {
   event: string

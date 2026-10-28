@@ -3,7 +3,22 @@ import datetime
 import factory
 
 from accounts.tests.factories import UserFactory
-from galleries.models import Event, Gallery
+from galleries import collections
+from galleries.models import Collection, Event, Gallery
+
+
+class CollectionFactory(factory.django.DjangoModelFactory):
+    """Passkeys come from the real generator, so lookups behave as in production."""
+
+    class Meta:
+        model = Collection
+
+    owner = factory.SubFactory(UserFactory)
+    name = factory.Sequence(lambda n: f"School {n}")
+
+    @classmethod
+    def _create(cls, model_class, *args, **kwargs):
+        return collections.create_collection(kwargs["owner"], kwargs["name"], prefix="SCH")
 
 
 class EventFactory(factory.django.DjangoModelFactory):

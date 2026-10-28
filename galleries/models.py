@@ -13,6 +13,45 @@ def generate_public_token() -> str:
     return secrets.token_urlsafe(settings.GALLERY_TOKEN_BYTES)
 
 
+class CollectionQuerySet(models.QuerySet["Collection"]):
+    def owned_by(self, user) -> "CollectionQuerySet":
+        return self.filter(owner=user)
+
+
+class Collection(models.Model):
+    """A group a photographer keeps coming back to (a school, a church): many events, one passkey.
+
+    The passkey both finds and unlocks the collection, so it carries a random part
+    (`galleries.collections`). Guests type it loosely; `passkey_key` is the normalised form.
+    """
+
+    class Status(models.TextChoices):
+        ACTIVE = "active"
+        ARCHIVED = "archived"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="collections"
+    )
+    name = models.CharField(max_length=200)
+    passkey_prefix = models.CharField(max_length=8, editable=False)
+    passkey = models.CharField(max_length=32, editable=False)  # as shown: MGSS-7K4QP-X9ABM
+    passkey_key = models.CharField(max_length=32, unique=True, editable=False)
+    # Bumped when the passkey changes, so phones that remembered the old one are signed out.
+    access_version = models.PositiveIntegerField(default=1)
+    status = models.CharField(max_length=10, choices=Status, default=Status.ACTIVE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    objects = CollectionQuerySet.as_manager()
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self) -> str:
+        return self.name
+
+
 class EventQuerySet(models.QuerySet["Event"]):
     def owned_by(self, user) -> "EventQuerySet":
         return self.filter(owner=user)
@@ -27,6 +66,11 @@ class Event(models.Model):
     event_date = models.DateField()
     description = models.TextField(blank=True)
     location_label = models.CharField(max_length=120, blank=True)
+    collection = models.ForeignKey(
+        Collection, null=True, blank=True, on_delete=models.SET_NULL, related_name="events"
+    )
+    # Inside a collection, but its galleries keep their own password: the passkey won't open them.
+    separate_access = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

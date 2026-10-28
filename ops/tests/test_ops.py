@@ -38,12 +38,12 @@ class TestHealth:
 
 
 class TestDashboard:
-    def test_serves_the_built_dashboard_at_the_root(self, client: Client, tmp_path, monkeypatch):
+    def test_serves_the_built_dashboard_under_app(self, client: Client, tmp_path, monkeypatch):
         (tmp_path / "dashboard").mkdir()
         (tmp_path / "dashboard" / "index.html").write_text("<div id=root></div>")
         monkeypatch.setattr(views, "staticfiles_storage", FileSystemStorage(location=tmp_path))
 
-        response = client.get("/")
+        response = client.get("/app/")
 
         assert response.status_code == 200
         assert b"<div id=root></div>" in response.content
@@ -52,7 +52,7 @@ class TestDashboard:
     def test_explains_when_not_built(self, client: Client, tmp_path, monkeypatch):
         monkeypatch.setattr(views, "staticfiles_storage", FileSystemStorage(location=tmp_path))
 
-        assert client.get("/").status_code == 404
+        assert client.get("/app/").status_code == 404
 
 
 class TestBackupBookkeeping:

@@ -494,3 +494,75 @@ progress {
   font-size: 0.8125rem;
   color: var(--muted);
 }
+
+/* Collections: one passkey for a group's events */
+.collections {
+  display: grid;
+  gap: 12px;
+}
+
+.collections h2 {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.collections > p {
+  margin: 0;
+  max-width: 65ch;
+}
+
+.collection-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.collection {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.collection__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.collection__passkey {
+  margin: 0;
+}
+
+.collection__passkey code {
+  font: 600 1.05rem/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: 0.06em;
+  user-select: all;
+}
+
+.collection .notice p {
+  margin: 0 0 8px;
+}
+
+.collection-form {
+  display: grid;
+  gap: 12px;
+}
+
+.checkbox {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  align-self: end;
+  font-weight: 400;
+}
+
+.checkbox input {
+  width: auto;
+  margin-top: 4px;
+}
