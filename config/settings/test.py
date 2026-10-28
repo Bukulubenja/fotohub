@@ -26,6 +26,7 @@ REST_FRAMEWORK = {
         "gallery_unlock": "1000/min",
         "gallery_unlock_global": "1000/min",
         "collection_unlock": "1000/min",
+        "collection_subscribe": "1000/min",
         "uploads": "1000/min",
         "archive": "1000/min",
         "payments": "1000/min",

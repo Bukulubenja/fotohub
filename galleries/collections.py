@@ -18,7 +18,9 @@ import secrets
 from django.conf import settings
 from django.core.signing import BadSignature
 from django.db import IntegrityError, transaction
+from django.db.models import Q, QuerySet
 from django.http import HttpRequest, HttpResponse
+from django.utils import timezone
 
 from galleries.models import Collection, Gallery
 
@@ -125,6 +127,16 @@ def set_status(collection: Collection, status: str) -> Collection:
         return []
 
     return _sign_everyone_out(collection, apply)
+
+
+def open_galleries(collection: Collection) -> QuerySet[Gallery]:
+    """The galleries its passkey shows: published, unexpired, not kept behind their own password.
+    The collection page and the update emails both use this, so they can't disagree."""
+    return Gallery.objects.filter(
+        event__collection=collection,
+        event__separate_access=False,
+        status=Gallery.Status.PUBLISHED,
+    ).filter(Q(expires_at__isnull=True) | Q(expires_at__gt=timezone.now()))
 
 
 def find_by_passkey(raw: str) -> Collection | None:

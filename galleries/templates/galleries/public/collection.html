@@ -44,6 +44,23 @@ h1 { margin: 20px 0 6px; }
 .fan img:nth-child(3) { transform: rotate(5deg); }
 .event strong { display: block; margin-top: 12px; font-size: 15px; line-height: 1.3; }
 .event small { display: block; color: var(--muted); font-size: 13px; margin-top: 2px; }
+/* "Email me when new photos are added" */
+.updates {
+  margin-top: 32px; padding: 20px; border: 1px solid var(--line); border-radius: 22px; background: var(--surface);
+  max-width: 560px;
+}
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.updates h2 { font: var(--h2); margin: 0 0 4px; }
+.updates p { margin: 0 0 14px; }
+.updates form { display: flex; flex-wrap: wrap; gap: 10px; }
+.updates input {
+  flex: 1 1 220px; min-width: 0; min-height: 48px; padding: 0 14px; border: 1.5px solid var(--field-line);
+  border-radius: var(--radius); background: var(--surface); color: var(--text); font: 16px/1.2 var(--sans);
+}
+.updates .btn { flex: 0 0 auto; }
+.updates .note { margin: 12px 0 0; font-size: 14px; }
+.updates .note.ok { color: var(--success); font-weight: 600; }
+.updates .note.bad { color: var(--danger); }
 .empty { margin-top: 24px; padding: 28px 20px; border: 1.5px dashed var(--line); border-radius: 22px; text-align: center; }
 {% endblock %}
 {% block body %}
@@ -81,6 +98,22 @@ h1 { margin: 20px 0 6px; }
   </ul>
   {% else %}
   <p class="empty muted">No photos {% if year %}from {{ year }} {% endif %}yet. Your photographer will add events here.</p>
+  {% endif %}
+
+  {% if not collection_preview %}
+  <section class="updates" aria-labelledby="updates-heading">
+    <h2 id="updates-heading">Get an email when new photos are added</h2>
+    <p class="muted">At most one email a day. Stop any time from the link in it.</p>
+    <form method="post" action="{% url 'collection-updates-request' collection.pk %}">
+      {% csrf_token %}
+      <label class="sr" for="updates-email">Your email</label>
+      <input id="updates-email" name="email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" maxlength="254" required{% if updates_notice == "invalid" %} aria-invalid="true" aria-describedby="updates-note"{% endif %}>
+      <button class="btn" type="submit">Email me</button>
+    </form>
+    {% if updates_notice == "sent" %}<p class="note ok" id="updates-note" role="status">Check your email and press the button in it to start your updates.</p>
+    {% elif updates_notice == "invalid" %}<p class="note bad" id="updates-note" role="alert">That doesn't look like an email address. Check it and try again.</p>
+    {% elif updates_notice == "busy" %}<p class="note bad" id="updates-note" role="alert">Too many tries. Wait a little and try again.</p>{% endif %}
+  </section>
   {% endif %}
 </main>
 <footer class="footer">Photos by {{ profile.display_name }}{% if profile.contact_phone %} · <a href="tel:{{ profile.contact_phone }}">{{ profile.contact_phone }}</a>{% endif %}</footer>

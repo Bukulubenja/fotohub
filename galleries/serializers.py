@@ -3,7 +3,7 @@ from rest_framework import serializers
 
 from assets.models import Photo
 from galleries import collections, sharing
-from galleries.models import Collection, Event, Gallery
+from galleries.models import Collection, CollectionSubscription, Event, Gallery
 from galleries.services import update_gallery_settings
 
 
@@ -11,6 +11,8 @@ class CollectionSerializer(serializers.ModelSerializer):
     # Only on create: the readable start of the passkey. Defaults to the name's initials.
     prefix = serializers.CharField(write_only=True, required=False, allow_blank=True, max_length=8)
     event_count = serializers.SerializerMethodField()
+    # How many guests get email updates. Never who: the addresses stay with FotoHub.
+    subscriber_count = serializers.SerializerMethodField()
     share_url = serializers.SerializerMethodField()
     share_message = serializers.SerializerMethodField()
 
@@ -23,6 +25,7 @@ class CollectionSerializer(serializers.ModelSerializer):
             "passkey",
             "status",
             "event_count",
+            "subscriber_count",
             "share_url",
             "share_message",
             "created_at",
@@ -41,6 +44,12 @@ class CollectionSerializer(serializers.ModelSerializer):
     def get_event_count(self, collection: Collection) -> int:
         annotated = getattr(collection, "event_count", None)
         return annotated if annotated is not None else collection.events.count()
+
+    def get_subscriber_count(self, collection: Collection) -> int:
+        annotated = getattr(collection, "subscriber_count", None)
+        if annotated is not None:
+            return annotated
+        return collection.subscriptions.filter(status=CollectionSubscription.Status.ACTIVE).count()
 
     def get_share_url(self, collection: Collection) -> str:
         return sharing.home_url(self.context["request"])

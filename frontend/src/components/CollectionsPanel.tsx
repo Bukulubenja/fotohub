@@ -99,6 +99,7 @@ function CollectionItem({ collection, api, onUpdated }: {
         <strong>{collection.name}</strong>
         <span className="muted">
           {plural(collection.event_count, 'event')}
+          {collection.subscriber_count > 0 && ` · ${plural(collection.subscriber_count, 'guest')} on email updates`}
           {collection.status === 'archived' && ' · archived'}
         </span>
       </div>

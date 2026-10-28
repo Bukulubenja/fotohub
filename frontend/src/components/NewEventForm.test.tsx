@@ -110,6 +110,7 @@ const school: Collection = {
   passkey: 'MGSS-7K4Q-X9AB',
   status: 'active',
   event_count: 0,
+  subscriber_count: 0,
   share_url: 'https://fotohub.ug/',
   share_message: '',
 }

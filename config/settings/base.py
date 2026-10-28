@@ -110,6 +110,8 @@ REST_FRAMEWORK = {
         "gallery_unlock_global": "60/hour",
         # Collection passkeys on the home page, per visitor (the passkey has ~40 random bits).
         "collection_unlock": "10/min",
+        # "Email me updates" requests per visitor (each may send a confirmation email).
+        "collection_subscribe": "10/hour",
         # create + sign + complete per file; a 1,000-photo event stays well under this.
         "uploads": "1200/min",
         # "Download all" requests per visitor; the archives themselves are shared.
@@ -240,6 +242,10 @@ CELERY_BEAT_SCHEDULE = {
     "expire-archives": {
         "task": "delivery.tasks.expire_archives",
         "schedule": 30 * 60,
+    },
+    "send-collection-updates": {
+        "task": "galleries.tasks.send_collection_updates",
+        "schedule": 60 * 60,  # idempotent: each change is reported once (galleries.updates)
     },
     "requeue-stuck-photos": {
         "task": "assets.tasks.requeue_stuck_photos",

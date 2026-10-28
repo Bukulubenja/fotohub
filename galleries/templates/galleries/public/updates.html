@@ -1,0 +1,27 @@
+{% extends "galleries/public/base.html" %}
+{% block title %}Photo updates · {{ collection.name }}{% endblock %}
+{% block style %}
+{% include "galleries/public/_leaf_theme.html" %}
+.card form { margin-top: 20px; }
+.card .btn { width: 100%; }
+.card .state { color: var(--success); font-weight: 600; }
+{% endblock %}
+{% block body %}
+<main class="center">
+  <div class="card">
+    <p class="eyebrow">Photo updates</p>
+    <h1>{{ collection.name }}</h1>
+    {% if subscription.status == "active" %}
+    <p class="state" role="status">You're getting updates at {{ subscription.email }}.</p>
+    <p class="muted">At most one email a day, when new photos are added.</p>
+    <form method="post">{% csrf_token %}<input type="hidden" name="action" value="stop"><button class="btn ghost" type="submit">Stop the emails</button></form>
+    {% elif subscription.status == "stopped" %}
+    <p class="muted">You won't get any more emails about new photos at {{ subscription.email }}.</p>
+    <form method="post">{% csrf_token %}<input type="hidden" name="action" value="confirm"><button class="btn" type="submit">Start again</button></form>
+    {% else %}
+    <p class="muted">Get an email at {{ subscription.email }} when new photos are added: at most one a day.</p>
+    <form method="post">{% csrf_token %}<input type="hidden" name="action" value="confirm"><button class="btn" type="submit">Send me updates</button></form>
+    {% endif %}
+  </div>
+</main>
+{% endblock %}

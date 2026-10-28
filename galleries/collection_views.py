@@ -12,7 +12,6 @@ from django.db.models.functions import Lower, RowNumber
 from django.http import HttpRequest, HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
-from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods
 from rest_framework.throttling import SimpleRateThrottle
 
@@ -27,6 +26,7 @@ WRONG_PASSKEY = "That passkey isn't right. Check the message from your photograp
 SUSPENDED = "This collection is temporarily unavailable. Contact your photographer."
 STACK_SIZE = 4  # the cover plus three smaller photos fanned over it on each card
 EAGER_CARDS = 4  # cards whose photos load straight away; the rest load on scroll
+UPDATE_NOTICES = {"sent", "invalid", "busy"}  # ?updates= after asking for emails (update_views)
 
 
 @dataclass(frozen=True)
@@ -108,14 +108,8 @@ def home(request: HttpRequest) -> HttpResponse:
 
 def visible_galleries(collection: Collection) -> list[Gallery]:
     """Published, unexpired galleries of the events the passkey opens, newest event first."""
-    now = timezone.now()
     return list(
-        Gallery.objects.filter(
-            event__collection=collection,
-            event__separate_access=False,
-            status=Gallery.Status.PUBLISHED,
-        )
-        .filter(Q(expires_at__isnull=True) | Q(expires_at__gt=now))
+        collections.open_galleries(collection)
         .select_related("event", "cover_photo")
         .annotate(photo_count=Count("photos", filter=Q(photos__status=Photo.Status.READY)))
         .order_by("-event__event_date", "-event__created_at", "created_at")
@@ -199,6 +193,9 @@ def collection_page(request: HttpRequest, collection_id: uuid.UUID) -> HttpRespo
         "year": year,
         "eager_cards": EAGER_CARDS,
         "collection_preview": is_preview,
+        "updates_notice": request.GET.get("updates")
+        if request.GET.get("updates") in UPDATE_NOTICES
+        else "",
     }
     response = render(request, "galleries/public/collection.html", context)
     if not is_preview:

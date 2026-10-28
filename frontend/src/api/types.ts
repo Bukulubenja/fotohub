@@ -28,6 +28,7 @@ export interface Collection {
   passkey: string
   status: CollectionStatus
   event_count: number
+  subscriber_count: number // guests getting email updates
   /** The guest home page, and a WhatsApp-ready message naming it and the passkey. */
   share_url: string
   share_message: string

@@ -52,6 +52,44 @@ class Collection(models.Model):
         return self.name
 
 
+class CollectionSubscription(models.Model):
+    """A guest who asked for email updates on a collection (`galleries.updates`).
+
+    Double opt-in: nothing is sent but the confirmation until the owner of the address presses
+    the button behind `token`. The same token stops the emails, so it is the only key needed.
+    """
+
+    class Status(models.TextChoices):
+        PENDING = "pending"  # asked, not yet confirmed from the inbox
+        ACTIVE = "active"
+        STOPPED = "stopped"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    collection = models.ForeignKey(
+        Collection, on_delete=models.CASCADE, related_name="subscriptions"
+    )
+    email = models.EmailField()  # lower-cased
+    token = models.CharField(max_length=64, unique=True, editable=False)
+    status = models.CharField(max_length=10, choices=Status, default=Status.PENDING)
+    confirm_sent_at = models.DateTimeField(null=True, blank=True)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    # Changes up to this moment have been reported (or happened before confirming).
+    notified_until = models.DateTimeField(null=True, blank=True)
+    last_sent_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["collection", "email"], name="one_subscription_per_email"
+            )
+        ]
+        indexes = [models.Index(fields=["status", "collection"])]
+
+    def __str__(self) -> str:
+        return f"{self.email} → {self.collection_id} ({self.status})"
+
+
 class EventQuerySet(models.QuerySet["Event"]):
     def owned_by(self, user) -> "EventQuerySet":
         return self.filter(owner=user)

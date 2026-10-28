@@ -2,7 +2,7 @@ import io
 from collections.abc import Callable
 
 import segno
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils.cache import patch_vary_headers
@@ -20,7 +20,7 @@ from rest_framework.views import APIView
 from billing import services as billing
 from galleries import access, collections, sharing
 from galleries import stats as gallery_stats
-from galleries.models import Collection, Event, Gallery
+from galleries.models import Collection, CollectionSubscription, Event, Gallery
 from galleries.serializers import (
     CollectionSerializer,
     EventSerializer,
@@ -47,7 +47,15 @@ class CollectionViewSet(viewsets.ModelViewSet):
         return (
             Collection.objects.owned_by(self.request.user)
             .select_related("owner__profile")
-            .annotate(event_count=Count("events"))
+            .annotate(
+                # distinct: two joins in one query would otherwise multiply the counts
+                event_count=Count("events", distinct=True),
+                subscriber_count=Count(
+                    "subscriptions",
+                    filter=Q(subscriptions__status=CollectionSubscription.Status.ACTIVE),
+                    distinct=True,
+                ),
+            )
             .order_by("name")
         )
 

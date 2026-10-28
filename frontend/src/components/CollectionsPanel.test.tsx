@@ -12,6 +12,7 @@ const school: Collection = {
   passkey: 'MGSS-7K4Q-X9AB',
   status: 'active',
   event_count: 3,
+  subscriber_count: 2,
   share_url: 'https://fotohub.ug/',
   share_message: 'Open https://fotohub.ug/ and enter the passkey MGSS-7K4Q-X9AB',
 }

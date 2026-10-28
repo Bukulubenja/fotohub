@@ -67,7 +67,7 @@ Planned app: `audit`.
 | GET | `/api/v1/auth/csrf/` | Sets CSRF cookie for the dashboard |
 | POST | `/api/v1/auth/register/` · `/login/` · `/logout/` | Session auth, throttled |
 | GET/PATCH | `/api/v1/me/` | Photographer profile |
-| CRUD | `/api/v1/collections/` | Scoped to the signed-in photographer. `prefix` (2-8 letters, write-only) starts the passkey; read-only `passkey`, `event_count`, `share_url`, `share_message` (contains the passkey, by design) |
+| CRUD | `/api/v1/collections/` | Scoped to the signed-in photographer. `prefix` (2-8 letters, write-only) starts the passkey; read-only `passkey`, `event_count`, `subscriber_count` (guests on email updates, never who), `share_url`, `share_message` (contains the passkey, by design) |
 | POST | `/api/v1/collections/{id}/rotate-passkey/` | New passkey, same prefix; every remembered phone is signed out |
 | GET | `/api/v1/collections/{id}/qr/` | Printable QR code (SVG) of `/?k=<passkey>` |
 | CRUD | `/api/v1/events/` | Scoped to the signed-in photographer. Optional `collection` (yours only) and `separate_access` |
@@ -142,6 +142,29 @@ those events in a **collection**. Guests enter its passkey once and see every ev
   links seen on the page keep working like any gallery link.
 - **Archived** collections and lapsed photographers' collections can't be opened. Archiving or
   reopening signs every phone out, like a new passkey.
+
+### Email updates (`galleries/updates.py`)
+
+Guests on a collection page can ask for "an email when new photos are added".
+
+- **Double opt-in.** Only a confirmation is sent until the address's owner presses the button
+  behind the link (`/updates/<token>/`). A GET only shows the button, because mail scanners
+  open links. Confirmations go out at most every 10 minutes per address, and requests are
+  limited to 10 an hour per visitor (`collection_subscribe`). The form gives the same answer
+  whether or not the address is already subscribed.
+- **One summary, at most once a day.** The hourly `send-collection-updates` beat task waits
+  until a collection has had no new photos for an hour (the upload is finished), then mails
+  each subscriber what's new since their last email: new events with their photo count, and
+  more photos in older ones. Each change is reported once.
+- **Only what the passkey opens.** Drafts, expired galleries and `separate_access` events are
+  never mentioned, and emails never contain the passkey (they get forwarded). Archived
+  collections and lapsed photographers send nothing. Changing the passkey keeps subscribers.
+- **Stopping.** Every summary has a stop link and RFC 8058 one-click `List-Unsubscribe`
+  headers (`/updates/<token>/stop/`, POST only, no CSRF: the token is the key). Those headers
+  are sent with a 998-character line limit, so the URL isn't encoded into a form mail apps
+  can't read.
+- **Photographers** see how many guests get updates (`subscriber_count`), never their
+  addresses.
 
 ## Selling photos (`shop/`)
 

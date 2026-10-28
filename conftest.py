@@ -19,6 +19,7 @@ def strict_throttle(monkeypatch):
             "gallery_unlock": "2/min",
             "gallery_unlock_global": "3/min",
             "collection_unlock": "2/min",
+            "collection_subscribe": "2/min",
             "uploads": "2/min",
             "archive": "2/min",
             "payments": "2/min",
