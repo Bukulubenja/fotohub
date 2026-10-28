@@ -6,6 +6,7 @@ collection's passkey is the exception: sharing it once with the group is the who
 
 from urllib.parse import quote, urlencode
 
+from django.conf import settings
 from django.http import HttpRequest
 from django.urls import reverse
 
@@ -55,7 +56,7 @@ def collection_message(collection: Collection, url: str) -> str:
     """What the photographer sends the group (a school's parents) once."""
     return "\n".join(
         [
-            f"Photos from {collection.name} are on FotoHub.",
+            f"Photos from {collection.name} are on {settings.BRAND['NAME']}.",
             f"Open {url} and enter the passkey {collection.passkey}",
             "Every new event appears there, and your phone remembers the passkey.",
             f"\u2014 {collection.owner.profile.display_name}",

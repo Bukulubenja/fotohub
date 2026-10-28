@@ -1,15 +1,14 @@
 {% extends "galleries/public/base.html" %}
-{% block title %}Find your photos · FotoHub{% endblock %}
+{% block title %}Find your photos · {{ brand_name }}{% endblock %}
 {% block style %}
-{% include "galleries/public/_leaf_theme.html" %}
 .card { max-width: 440px; }
 .panel {
   margin-top: 24px; padding: 24px 20px; border: 1px solid var(--line); border-radius: 24px;
   background: var(--surface); box-shadow: 0 18px 40px -28px rgba(5, 66, 4, .45);
 }
 form { display: grid; gap: 14px; text-align: left; }
-label, .label { font-weight: 600; font-size: 14px; }
-.error { color: var(--danger); font-size: 14px; margin: 0; text-align: center; }
+label, .label { font-weight: 600; font-size: var(--ui); }
+.error { color: var(--danger); font-size: var(--ui); margin: 0; text-align: center; }
 
 /* Without JavaScript: one plain field. */
 .plain input {
@@ -53,7 +52,7 @@ form.busy .checking-hides { opacity: 0; pointer-events: none; }
 .chip {
   justify-self: center; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 14px;
   border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--accent);
-  font: 600 13px/1 var(--sans); cursor: pointer;
+  font: 600 var(--small)/1 var(--sans); cursor: pointer;
 }
 .chip svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
@@ -66,16 +65,17 @@ form.busy .checking-hides { opacity: 0; pointer-events: none; }
 }
 .row .mark {
   flex: none; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px;
-  background: var(--lime-wash); color: var(--accent); font: 700 13px/1 var(--sans);
+  background: var(--lime-wash); color: var(--accent); font: 700 var(--small)/1 var(--sans);
 }
-.row .go { margin-left: auto; color: var(--accent); font-size: 14px; }
+.row .go { margin-left: auto; color: var(--accent); font-size: var(--ui); }
 .signin { margin-top: 28px; }
 @media (prefers-reduced-motion: reduce) { .keypad.bad .boxes { animation: none; } }
 {% endblock %}
 {% block body %}
 <main class="center">
   <div class="card">
-    <div class="eyebrow">FotoHub</div>
+    <div class="eyebrow">{{ brand_name }}</div>
+    <div class="tagline">{{ brand_tagline }}</div>
     <h1>Find your photos</h1>
     <p class="muted">Enter the passkey your photographer or school shared. You only need to do this once on this phone.</p>
 

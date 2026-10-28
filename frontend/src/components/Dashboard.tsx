@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { auth, collectionsApi, galleries as galleriesApi, photos, storage, uploadConfig } from '../api/endpoints'
 import type { Collection, Gallery, Me, StorageUsage, Subscription, UploadConfig } from '../api/types'
+import { BRAND_NAME, BRAND_TAGLINE } from '../brand'
 import { formatBytes, plural } from '../format'
 import { useUploadQueue } from '../upload/useUploadQueue'
 import { BillingPanel } from './BillingPanel'
@@ -143,7 +144,10 @@ export function Dashboard({ me, onLogout }: { me: Me; onLogout: () => void }) {
   return (
     <div className="shell">
       <header className="topbar">
-        <strong>FotoHub</strong>
+        <span className="brand">
+          <strong>{BRAND_NAME}</strong>
+          <span className="brand__tagline">{BRAND_TAGLINE}</span>
+        </span>
         <StorageMeter usage={usage} />
         <span className="muted">{me.display_name}</span>
         <button type="button" className="link" aria-expanded={showCollections} onClick={() => setShowCollections((v) => !v)}>

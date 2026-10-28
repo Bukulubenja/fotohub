@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { collectionQrUrl, collectionsApi, type CollectionsApi } from '../api/endpoints'
 import type { Collection } from '../api/types'
+import { BRAND_NAME } from '../brand'
 import { plural } from '../format'
 
 const WHATSAPP_SHARE = 'https://wa.me/?text='
@@ -164,8 +165,8 @@ export function CollectionsPanel({
     <section className="panel collections" aria-labelledby="collections-heading">
       <h2 id="collections-heading">Collections</h2>
       <p className="muted">
-        For a school, church or company you photograph often. Share one passkey once: guests enter it on the
-        FotoHub home page and see every event you add to the collection.
+        For a school, church or company you photograph often. Share one passkey once: guests enter it on the{' '}
+        {BRAND_NAME} home page and see every event you add to the collection.
       </p>
       {collections.length > 0 && (
         <ul className="collection-list">

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { auth } from '../api/endpoints'
 import type { Me } from '../api/types'
+import { BRAND_NAME, BRAND_TAGLINE } from '../brand'
 
 export function LoginForm({ onLogin }: { onLogin: (me: Me) => void }) {
   const [error, setError] = useState('')
@@ -23,7 +24,8 @@ export function LoginForm({ onLogin }: { onLogin: (me: Me) => void }) {
   return (
     <main className="auth">
       <form className="panel auth__form" onSubmit={submit}>
-        <h1>FotoHub</h1>
+        <h1>{BRAND_NAME}</h1>
+        <p className="brand__tagline">{BRAND_TAGLINE}</p>
         <p className="muted">Sign in to upload and deliver your galleries.</p>
         <label>
           Email

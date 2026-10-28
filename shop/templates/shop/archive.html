@@ -3,7 +3,7 @@
 {% block meta %}{% if job.is_pending %}<meta http-equiv="refresh" content="{{ refresh_seconds }}">{% endif %}{% endblock %}
 {% block style %}
 .actions { display: grid; gap: 12px; justify-items: center; margin-top: 24px; }
-.note { font-size: 14px; }
+.note { font-size: var(--ui); }
 .spinner { width: 28px; height: 28px; margin: 0 auto 16px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }

@@ -117,7 +117,7 @@ def watermark_label(photo: Photo) -> str:
     try:
         return f"© {photo.gallery.event.owner.profile.display_name}"
     except ObjectDoesNotExist:
-        return "FotoHub preview"
+        return f"{settings.BRAND['NAME']} preview"
 
 
 def mark_failed(photo_id: str, reason: str) -> None:

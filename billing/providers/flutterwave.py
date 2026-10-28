@@ -94,7 +94,10 @@ class FlutterwaveProvider:
                 "redirect_url": charge.return_url,
                 "payment_options": PAYMENT_OPTIONS[charge.currency],
                 "customer": {"email": charge.email, "phonenumber": charge.phone},
-                "customizations": {"title": "FotoHub", "description": charge.description},
+                "customizations": {
+                    "title": settings.BRAND["NAME"],
+                    "description": charge.description,
+                },
             },
         )
         link = (body.get("data") or {}).get("link")

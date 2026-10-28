@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
-<title>{% block title %}FotoHub{% endblock %}</title>
+<title>{% block title %}{{ brand_name }}{% endblock %}</title>
 {% block meta %}{% endblock %}
 <style>
 /* Inter, self-hosted (SIL OFL, see the OFL.txt beside it): one 48 KB variable file. */
@@ -12,25 +12,38 @@
   font-family: "Inter"; font-style: normal; font-weight: 100 900; font-display: swap;
   src: url("{% static 'galleries/fonts/inter-latin-wght-normal.woff2' %}") format("woff2");
 }
-/* FotoHub blueprint palette: navy ink, violet for actions and the active tab, teal for success,
-   warm highlight for badges, cool canvas. 60% canvas, 30% cards and lines, 10% violet. */
+/* Leaf palette (owner's reference, 2026-10-28): lime #C0DE7B, leaf #79B425, deep #054204,
+   forest #1D6517, sky #55A6C3. Lime, leaf and sky are too light for text on white, so they only
+   tint, ring and highlight; text and buttons use forest and deep green (forest on white ~7:1). */
 :root {
-  --ink: #132238; --text: #132238; --muted: #5b6578;
-  --bg: #f7f8fa; --surface: #ffffff; --line: #e2e8f0;
-  --accent: #6d5ce8; --accent-ink: #ffffff;
-  --success: #13a89e; --success-text: #0b7a72; --highlight: #f5b942; --danger: #b42318;
+  --ink: #054204; --text: #0d2a10; --muted: #4b5e47;
+  --bg: #f4f8ee; --surface: #ffffff; --line: #dbe7cf;
+  --accent: #1d6517; --accent-ink: #ffffff;
+  --leaf: #79b425; --lime: #c0de7b; --sky: #55a6c3; --lime-wash: #eef6dc;
+  --success: #1d6517; --success-text: #1d6517; --highlight: #c0de7b; --highlight-ink: #054204;
+  --danger: #b42318;
+  --field-line: #6f8f5f; /* input outlines need 3:1 against their background (WCAG 1.4.11) */
+  /* The photo intro and tab bar are dark in both themes. */
+  --night: #04160a; --night-2: #0b2610; --night-muted: #a3b89c; --night-text: #e6f2dc;
   --sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  /* Type scale: page title 22-36px, section 18px, body 16px, helper 13px. */
-  --title: 700 clamp(24px, 2.4vw + 14px, 36px)/1.15 var(--sans);
-  --h2: 600 18px/1.3 var(--sans);
+  /* Type scale: page title 36-48px, section 20-28px, buttons and menus 15px, body 16px,
+     dates and captions 13px, badges 12px. */
+  --title: 700 clamp(36px, 2.5vw + 27px, 48px)/1.1 var(--sans);
+  --h2: 600 clamp(20px, 1vw + 17px, 28px)/1.25 var(--sans);
+  --ui: 15px;
+  --small: 13px;
+  --tiny: 12px;
   --measure: 65ch; /* comfortable line length for paragraphs */
   --radius: 12px;
   color-scheme: light dark;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --text: #e8ecf4; --muted: #9aa6ba; --bg: #0b1220; --surface: #132238; --line: #24324a;
-    --success-text: #2cc4b8; --danger: #f2b8b5;
+    --ink: #c0de7b; --text: #e6f2dc; --muted: #a3b89c;
+    --bg: #04160a; --surface: #0b2610; --line: #1d4a1c;
+    --accent: #79b425; --accent-ink: #054204;
+    --lime-wash: #10331a; --success: #79b425; --success-text: #79b425; --highlight: #79b425;
+    --danger: #f2b8b5; --field-line: #5a9446;
   }
 }
 * { box-sizing: border-box; }
@@ -46,36 +59,37 @@ a { color: inherit; }
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   min-height: 48px; padding: 0 20px; border: 0; border-radius: var(--radius);
   background: var(--accent); color: var(--accent-ink);
-  font: 600 15px/1 var(--sans); text-decoration: none; cursor: pointer;
+  font: 600 var(--ui)/1 var(--sans); text-decoration: none; cursor: pointer;
 }
 .btn.ghost { background: var(--surface); color: var(--text); box-shadow: inset 0 0 0 1px var(--line); }
 .btn:focus-visible, a:focus-visible, input:focus-visible, button:focus-visible {
   outline: 3px solid var(--accent); outline-offset: 2px;
 }
-.banner { background: #fff4d6; color: #4a3500; font-size: 14px; padding: 10px 16px; text-align: center; }
-.eyebrow { color: var(--muted); font: 600 13px/1.4 var(--sans); letter-spacing: .06em; text-transform: uppercase; }
+.banner { background: var(--lime-wash); color: var(--ink); font-size: var(--ui); padding: 10px 16px; text-align: center; }
+.tagline { margin: -2px 0 6px; color: var(--muted); font: italic 400 var(--small)/1.4 var(--sans); }
+.eyebrow { color: var(--accent); font: 600 var(--small)/1.4 var(--sans); letter-spacing: .06em; text-transform: uppercase; }
 h1 { font: var(--title); margin: 4px 0 8px; letter-spacing: -.02em; }
 .center { min-height: 100svh; display: grid; place-items: center; padding: 32px 16px; text-align: center; }
 .card { width: 100%; max-width: 420px; }
 .muted { color: var(--muted); }
-.helper { font-size: 13px; color: var(--muted); }
-.footer { padding: 40px 16px 56px; text-align: center; color: var(--muted); font-size: 13px; }
-/* Tab bar: a navy dock, the same in both themes so it also sits on the photo intro. */
+.helper { font-size: var(--small); color: var(--muted); }
+.footer { padding: 40px 16px 56px; text-align: center; color: var(--muted); font-size: var(--small); }
+/* Tab bar: a deep green dock, the same in both themes so it also sits on the photo intro. */
 body.has-nav { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 .tabbar {
   position: fixed; z-index: 10; left: 50%; bottom: max(12px, env(safe-area-inset-bottom));
   transform: translateX(-50%); width: min(420px, calc(100% - 24px));
   display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 6px;
-  background: rgba(19, 34, 56, .94); border: 1px solid rgba(255, 255, 255, .08); border-radius: 20px;
-  box-shadow: 0 10px 30px rgba(11, 18, 32, .3);
+  background: rgba(11, 38, 16, .94); border: 1px solid rgba(255, 255, 255, .08); border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(4, 22, 10, .3);
   -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
 }
 .tabbar a {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-  min-height: 52px; border-radius: 14px; color: #9aa6ba; text-decoration: none;
-  font: 500 11px/1 var(--sans); transition: color .15s, background-color .15s;
+  min-height: 52px; border-radius: 14px; color: var(--night-muted); text-decoration: none;
+  font: 500 var(--tiny)/1 var(--sans); transition: color .15s, background-color .15s;
 }
-.tabbar a[aria-current="page"] { color: #fff; background: var(--accent); font-weight: 600; }
+.tabbar a[aria-current="page"] { color: var(--accent-ink); background: var(--accent); font-weight: 600; }
 @media (hover: hover) { .tabbar a:hover { color: #fff; } }
 .tabbar a:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
 .tabbar svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
@@ -83,7 +97,7 @@ body.has-nav { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 .tab-icon { position: relative; display: inline-flex; }
 .badge {
   position: absolute; top: -6px; left: 14px; min-width: 18px; height: 18px; padding: 0 5px;
-  border-radius: 999px; background: var(--highlight); color: var(--ink); font: 700 11px/18px var(--sans); text-align: center;
+  border-radius: 999px; background: var(--highlight); color: var(--highlight-ink); font: 700 var(--tiny)/18px var(--sans); text-align: center;
 }
 {% block style %}{% endblock %}
 </style>

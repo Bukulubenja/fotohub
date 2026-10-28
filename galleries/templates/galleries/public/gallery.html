@@ -10,7 +10,7 @@
 <meta property="og:image:width" content="{{ share_cover.width }}">
 <meta property="og:image:height" content="{{ share_cover.height }}">
 <meta name="twitter:card" content="summary_large_image">{% endif %}
-<meta name="theme-color" content="#0b1220">
+<meta name="theme-color" content="#04160a">
 {% endblock %}
 {% block body_class %} class="has-nav"{% endblock %}
 {% block style %}
@@ -19,7 +19,7 @@
 .intro {
   position: relative; isolation: isolate; overflow: hidden; min-height: 100svh;
   display: flex; flex-direction: column; justify-content: flex-end;
-  background: #0b1220; color: #fff; text-align: center;
+  background: var(--night); color: #fff; text-align: center;
 }
 .mosaic {
   position: absolute; z-index: -2; inset: -12% -40% 10%;
@@ -32,7 +32,7 @@
 /* Margins, not gap, so the doubled track is exactly two equal halves and loops seamlessly. */
 .mosaic img {
   display: block; width: 100%; height: auto; aspect-ratio: 4 / 5; object-fit: cover;
-  margin-bottom: 14px; border-radius: 10px; background: #132238;
+  margin-bottom: 14px; border-radius: 10px; background: var(--night-2);
   box-shadow: 0 8px 24px rgba(0, 0, 0, .35);
 }
 @keyframes drift { to { transform: translateY(-50%); } }
@@ -40,34 +40,34 @@
 @media (prefers-reduced-motion: reduce) { .mosaic-track { animation: none; } }
 .intro::after {
   content: ""; position: absolute; z-index: -1; inset: 0; pointer-events: none;
-  background: linear-gradient(180deg, rgba(11, 18, 32, .1) 0%, rgba(11, 18, 32, .3) 35%, rgba(11, 18, 32, .94) 64%, #0b1220 78%);
+  background: linear-gradient(180deg, rgba(4, 22, 10, .1) 0%, rgba(4, 22, 10, .3) 35%, rgba(4, 22, 10, .94) 64%, #04160a 78%);
 }
 .intro-text { padding: 0 24px calc(112px + env(safe-area-inset-bottom)); }
-.intro .eyebrow { color: #9aa6ba; }
+.intro .eyebrow { color: var(--lime); }
 .intro h1 { max-width: 14ch; margin-inline: auto; }
-.intro-meta { color: #9aa6ba; margin: 0 0 28px; }
+.intro-meta { color: var(--night-muted); margin: 0 0 28px; }
 .intro-go {
   display: inline-grid; place-items: center; width: 56px; height: 56px; border-radius: 16px;
-  color: #fff; background: var(--accent); box-shadow: 0 8px 24px rgba(109, 92, 232, .35);
+  color: var(--accent-ink); background: var(--accent); box-shadow: 0 8px 24px rgba(29, 101, 23, .35);
   transition: background-color .2s, transform .2s;
 }
-@media (hover: hover) { .intro-go:hover { background: #5b4bd6; } }
+@media (hover: hover) { .intro-go:hover { filter: brightness(1.12); } }
 .intro-go:active { transform: scale(.96); }
 .intro-go:focus-visible { outline-color: #fff; }
 .intro-go svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .summary { max-width: var(--measure); margin: 0 auto; padding: 40px 0 32px; text-align: center; }
 .summary > :first-child { margin-top: 0; }
-.note { font-size: 14px; margin: 10px 0 0; }
+.note { font-size: var(--ui); margin: 10px 0 0; }
 .share { display: flex; justify-content: center; gap: 8px; margin-top: 16px; }
 .chip {
   display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; margin: 0 0 24px;
-  border-radius: 999px; background: rgba(255, 255, 255, .08); color: #e8ecf4; font: 500 13px/1 var(--sans);
+  border-radius: 999px; background: rgba(255, 255, 255, .08); color: var(--night-text); font: 500 var(--small)/1 var(--sans);
 }
 .chip svg, .privacy svg { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .lead { margin: 0 0 20px; }
 .privacy {
   display: flex; gap: 10px; align-items: flex-start; margin: 0 0 16px; padding: 12px 14px;
-  border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); font-size: 14px;
+  border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); font-size: var(--ui);
 }
 .privacy svg { margin-top: 3px; color: var(--accent); }
 .footer .takedown { max-width: var(--measure); margin: 0 auto 8px; }
@@ -130,7 +130,7 @@
 
 <footer class="footer">
   {% include "galleries/public/_takedown.html" %}
-  Delivered with FotoHub
+  Delivered with {{ brand_name }}
 </footer>
 
 {% include "galleries/public/_nav.html" with active="home" %}

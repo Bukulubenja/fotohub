@@ -12,7 +12,7 @@
   events with their own password are never mentioned. Emails never contain the passkey,
   because they get forwarded.
 - **One-click stop** (RFC 8058): every summary carries `List-Unsubscribe` headers, so mail apps
-  show an unsubscribe button that works without opening FotoHub.
+  show an unsubscribe button that works without opening the site.
 """
 
 import datetime
@@ -81,7 +81,8 @@ def _send_confirmation(subscription: CollectionSubscription) -> None:
     send_mail(
         subject=f"Confirm photo updates from {name}",
         message=(
-            f"Someone asked for an email when new photos from {name} are added on FotoHub.\n\n"
+            f"Someone asked for an email when new photos from {name} are added on "
+            f"{settings.BRAND['NAME']}.\n\n"
             f"If it was you, confirm here:\n{manage_link(subscription)}\n\n"
             "If it wasn't, ignore this email. You won't get anything else."
         ),
@@ -189,7 +190,7 @@ def summary(collection: Collection, found: list[Change], subscription) -> tuple[
             lines.append(f"- {change.title}: {change.photos} new photo{plural}")
     body = "\n".join(
         [
-            f"New on FotoHub from {collection.name}:",
+            f"New on {settings.BRAND['NAME']} from {collection.name}:",
             "",
             *lines,
             "",

@@ -1,20 +1,19 @@
 {% extends "galleries/public/base.html" %}
 {% block title %}{{ collection.name }} · {{ profile.display_name }}{% endblock %}
 {% block style %}
-{% include "galleries/public/_leaf_theme.html" %}
 .page { max-width: 1040px; margin: 0 auto; padding: 24px 16px 24px; }
 .head { display: flex; align-items: center; gap: 12px; }
 .avatar {
   flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%;
-  background: var(--accent); color: var(--accent-ink); font: 700 15px/1 var(--sans);
+  background: var(--accent); color: var(--accent-ink); font: 700 var(--ui)/1 var(--sans);
 }
-.head .who { color: var(--muted); font-size: 14px; }
+.head .who { color: var(--muted); font-size: var(--ui); }
 h1 { margin: 20px 0 6px; }
 .page > p { max-width: var(--measure); margin: 0; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 0; padding: 0; list-style: none; }
 .chips a {
   display: inline-flex; align-items: center; min-height: 36px; padding: 0 14px; border-radius: 999px;
-  border: 1px solid var(--line); background: var(--surface); text-decoration: none; font: 600 13px/1 var(--sans);
+  border: 1px solid var(--line); background: var(--surface); text-decoration: none; font: 600 var(--small)/1 var(--sans);
 }
 .chips a[aria-current="page"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 
@@ -42,8 +41,8 @@ h1 { margin: 20px 0 6px; }
 .fan img + img { margin-left: -14%; }
 .fan img:nth-child(1) { transform: rotate(-6deg); }
 .fan img:nth-child(3) { transform: rotate(5deg); }
-.event strong { display: block; margin-top: 12px; font-size: 15px; line-height: 1.3; }
-.event small { display: block; color: var(--muted); font-size: 13px; margin-top: 2px; }
+.event strong { display: block; margin-top: 12px; font-size: 17px; line-height: 1.3; }
+.event small { display: block; color: var(--muted); font-size: var(--small); margin-top: 2px; }
 /* "Email me when new photos are added" */
 .updates {
   margin-top: 32px; padding: 20px; border: 1px solid var(--line); border-radius: 22px; background: var(--surface);
@@ -58,7 +57,7 @@ h1 { margin: 20px 0 6px; }
   border-radius: var(--radius); background: var(--surface); color: var(--text); font: 16px/1.2 var(--sans);
 }
 .updates .btn { flex: 0 0 auto; }
-.updates .note { margin: 12px 0 0; font-size: 14px; }
+.updates .note { margin: 12px 0 0; font-size: var(--ui); }
 .updates .note.ok { color: var(--success); font-weight: 600; }
 .updates .note.bad { color: var(--danger); }
 .empty { margin-top: 24px; padding: 28px 20px; border: 1.5px dashed var(--line); border-radius: 22px; text-align: center; }

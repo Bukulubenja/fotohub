@@ -1,5 +1,5 @@
 {% extends "galleries/public/base.html" %}
-{% block title %}Buying photos · FotoHub{% endblock %}
+{% block title %}Buying photos · {{ brand_name }}{% endblock %}
 {% block style %}
 .page { max-width: 720px; margin: 0 auto; padding: 32px 16px 56px; }
 .page p, .page li { max-width: var(--measure); }
@@ -8,9 +8,9 @@
 {% endblock %}
 {% block body %}
 <main class="page">
-  <div class="eyebrow">FotoHub</div>
+  <div class="eyebrow">{{ brand_name }}</div>
   <h1>Buying photos: terms and refunds</h1>
-  <p class="muted">How buying photos from a FotoHub gallery works, and what to do if something goes wrong.</p>
+  <p class="muted">How buying photos from a {{ brand_name }} gallery works, and what to do if something goes wrong.</p>
 
   <h2>What you buy</h2>
   <ul>
@@ -20,7 +20,7 @@
 
   <h2>Paying</h2>
   <ul>
-    <li>Pay once for every photo in your cart, by MTN or Airtel mobile money or by card. Payments are handled by Flutterwave; FotoHub never sees your card details.</li>
+    <li>Pay once for every photo in your cart, by MTN or Airtel mobile money or by card. Payments are handled by Flutterwave; {{ brand_name }} never sees your card details.</li>
     <li>Your photos unlock only after the payment provider confirms the payment to our server. Leaving the payment page early doesn't lose your order: open your order link to check its status.</li>
   </ul>
 
@@ -33,14 +33,14 @@
 
   <h2>Problems and refunds</h2>
   <ul>
-    <li>If you were charged but can't download your photos, or you were charged twice, contact {% if support_email %}<a href="mailto:{{ support_email }}">FotoHub support</a>{% else %}the photographer who shared the gallery{% endif %} with your order link. We'll check the payment with the provider and fix the order or arrange a refund.</li>
+    <li>If you were charged but can't download your photos, or you were charged twice, contact {% if support_email %}<a href="mailto:{{ support_email }}">{{ brand_name }} support</a>{% else %}the photographer who shared the gallery{% endif %} with your order link. We'll check the payment with the provider and fix the order or arrange a refund.</li>
     <li>For any other refund request, contact the photographer who shared the gallery.</li>
   </ul>
 
   <h2>Privacy and takedown</h2>
   <ul>
     <li>Galleries are private: only people with the link (and the password, if one is set) can open them. Please don't repost or share images of other people without their permission.</li>
-    <li>Need an image reviewed or removed? Contact the photographer who shared the gallery{% if support_email %} or <a href="mailto:{{ support_email }}">FotoHub support</a>{% endif %}.</li>
+    <li>Need an image reviewed or removed? Contact the photographer who shared the gallery{% if support_email %} or <a href="mailto:{{ support_email }}">{{ brand_name }} support</a>{% endif %}.</li>
   </ul>
 </main>
 {% endblock %}

@@ -27,32 +27,33 @@ def stage(standing: lifecycle.Standing) -> str:
 
 
 def message(subscription: Subscription, current: str) -> tuple[str, str]:
+    BRAND = settings.BRAND["NAME"]  # noqa: N806
     what = "free trial" if subscription.plan.code == settings.BILLING["TRIAL_PLAN"] else "plan"
     ends = timezone.localtime(subscription.paid_until).strftime("%d %B %Y").lstrip("0")
     renew = f"Renew from your dashboard: {settings.SITE_URL.rstrip('/')}{reverse('dashboard')}"
     texts = {
         lifecycle.State.DUE: (
-            f"Your FotoHub {what} ends on {ends}",
+            f"Your {BRAND} {what} ends on {ends}",
             f"Your {what} ends on {ends}. Renew before then to keep uploading without a break.",
         ),
         lifecycle.State.GRACE: (
-            "Uploads are paused on FotoHub",
+            f"Uploads are paused on {BRAND}",
             f"Your {what} ended on {ends}, so new uploads are paused. Your galleries are still "
             "online and your clients can still see them.",
         ),
         lifecycle.State.LAPSED: (
-            "Your FotoHub galleries will be hidden soon",
+            f"Your {BRAND} galleries will be hidden soon",
             f"Your {what} ended on {ends}. Your galleries are still online for now, but will be "
             "hidden from clients if you don't renew. Your photos are kept safe.",
         ),
         HIDDEN: (
-            "Your FotoHub galleries are hidden from clients",
+            f"Your {BRAND} galleries are hidden from clients",
             "Your galleries are now hidden from clients. Nothing has been deleted: renew and "
             "they come back straight away.",
         ),
     }
     subject, body = texts[current]
-    return subject, f"{body}\n\n{renew}\n\n— FotoHub"
+    return subject, f"{body}\n\n{renew}\n\n— {BRAND}"
 
 
 def deliver(subscription: Subscription, subject: str, body: str) -> None:

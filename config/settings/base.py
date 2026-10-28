@@ -52,6 +52,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "galleries.context_processors.support",
+                "galleries.context_processors.brand",
             ],
         },
     },
@@ -201,9 +202,12 @@ SHOP = {
     "PRICE_USD_CENTS": env.int("SHOP_PRICE_USD_CENTS", default=24),
     "PRICE_UGX": env.int("SHOP_PRICE_UGX", default=900),
 }
+# The product name people see (pages, emails, payments, watermarks). Code names stay "fotohub".
+BRAND = {"NAME": "SMAGOK HIVE", "TAGLINE": "a smagok archive"}
+
 # Public base URL, for links in emails (receipts, reminders).
 SITE_URL = env("SITE_URL", default="http://127.0.0.1:8000")
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="FotoHub <photos@fotohub.ug>")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="SMAGOK HIVE <photos@fotohub.ug>")
 # Where guests reach FotoHub about payments and takedown requests. Empty: pages point them
 # to the photographer instead.
 SUPPORT_EMAIL = env("SUPPORT_EMAIL", default="")

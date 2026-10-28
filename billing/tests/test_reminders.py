@@ -58,10 +58,10 @@ def test_each_stage_sends_its_own_reminder(now):
     ends = timezone.localtime(now + 2 * DAY)
     subjects = [m.subject for m in mail.outbox]
     assert subjects == [
-        f"Your FotoHub plan ends on {ends.day} {ends:%B %Y}",
-        "Uploads are paused on FotoHub",
-        "Your FotoHub galleries will be hidden soon",
-        "Your FotoHub galleries are hidden from clients",
+        f"Your SMAGOK HIVE plan ends on {ends.day} {ends:%B %Y}",
+        "Uploads are paused on SMAGOK HIVE",
+        "Your SMAGOK HIVE galleries will be hidden soon",
+        "Your SMAGOK HIVE galleries are hidden from clients",
     ]
     assert "Nothing has been deleted" in mail.outbox[-1].body
 
