@@ -30,7 +30,8 @@ from assets.models import Photo
 from billing import services as billing
 from galleries import access, favourites, sharing, stats
 from galleries.models import Gallery
-from galleries.views import NOINDEX, GalleryUnlockThrottle
+from galleries.throttling import GalleryPasswordMisses
+from galleries.views import NOINDEX
 from shop import cart
 from shop.pricing import format_money, price
 
@@ -108,9 +109,9 @@ def within_rate(
     return all(t.allow_request(drf_request, view) for t in (ScopedRateThrottle(), *extra))
 
 
-def unlock_allowed(request: HttpRequest, token: str) -> bool:
+def unlock_allowed(request: HttpRequest, misses: GalleryPasswordMisses) -> bool:
     """Same counters as the JSON unlock API, so switching endpoints buys no extra guesses."""
-    return within_rate(request, "gallery_unlock", token, (GalleryUnlockThrottle(),))
+    return within_rate(request, "gallery_unlock", misses.ident) and not misses.blocked(request)
 
 
 def base_context(request: HttpRequest, visit: Visit) -> dict:
@@ -305,9 +306,11 @@ def unlock(request: HttpRequest, token: str) -> HttpResponse:
     page = reverse("public-gallery-page", args=[token])
     if can_view(request, visit):
         return redirect(page)
-    if not unlock_allowed(request, token):
+    misses = GalleryPasswordMisses(token)
+    if not unlock_allowed(request, misses):
         return locked(request, visit, TOO_MANY_TRIES, status=429)
     if not visit.gallery.check_access_password(request.POST.get("password", "")):
+        misses.record(request)
         return locked(request, visit, WRONG_PASSWORD, status=403)
     access.mark_unlocked(request, visit.gallery)
     return HttpResponseRedirect(page, status=303)

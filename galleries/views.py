@@ -10,11 +10,11 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import APIException, NotFound
+from rest_framework.exceptions import APIException, NotFound, Throttled
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
-from rest_framework.throttling import ScopedRateThrottle, SimpleRateThrottle
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from billing import services as billing
@@ -35,6 +35,7 @@ from galleries.services import (
     rotate_gallery_token,
     unpublish_gallery,
 )
+from galleries.throttling import GalleryPasswordMisses
 
 QR_SCALE = 10  # SVG units per module; the vector scales cleanly for printing anyway
 QR_BORDER = 2
@@ -139,15 +140,6 @@ def get_public_gallery(token: str) -> Gallery:
     return gallery
 
 
-class GalleryUnlockThrottle(SimpleRateThrottle):
-    """Caps password attempts per gallery across all clients (complements per-IP limits)."""
-
-    scope = "gallery_unlock_global"
-
-    def get_cache_key(self, request: Request, view: APIView) -> str:
-        return self.cache_format % {"scope": self.scope, "ident": view.kwargs["token"]}
-
-
 class PublicGalleryAPIView(APIView):
     """Base for customer endpoints: anonymous, session-aware, never indexed or cached."""
 
@@ -173,13 +165,17 @@ class PublicGalleryView(PublicGalleryAPIView):
 @method_decorator(csrf_protect, name="post")
 class PublicGalleryUnlockView(PublicGalleryAPIView):
     throttle_scope = "gallery_unlock"
-    throttle_classes = [ScopedRateThrottle, GalleryUnlockThrottle]
+    throttle_classes = [ScopedRateThrottle]
 
     def post(self, request: Request, token: str) -> Response:
         gallery = get_public_gallery(token)
         serializer = UnlockSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        misses = GalleryPasswordMisses(token)
+        if misses.blocked(request):
+            raise Throttled()
         if not gallery.check_access_password(serializer.validated_data["password"]):
+            misses.record(request)
             return Response(
                 {"detail": "That password isn't right. Check the message from your photographer."},
                 status=status.HTTP_403_FORBIDDEN,

@@ -155,3 +155,36 @@ def test_hidden_buttons_stay_hidden(client: Client, published):
 
     assert "[hidden] { display: none !important; }" in html
     assert re.search(r'<a class="lb-btn" data-download href="#" hidden>', html)
+
+
+class TestContentSecurityPolicy:
+    """Only this site's files, and inline code carrying the response's nonce, may run."""
+
+    def test_every_inline_script_and_style_carries_the_nonce(self, client: Client, published):
+        ready_photo(published)
+        response = page(client, published)
+        policy = response["Content-Security-Policy"]
+        html = response.content.decode()
+
+        nonce = re.search(r"'nonce-([^']+)'", policy).group(1)
+        inline = re.findall(r"<(?:script|style)(?![^>]*application/json)[^>]*>", html)
+        assert inline, "the gallery page has inline scripts and a style block"
+        assert all(f'nonce="{nonce}"' in tag for tag in inline)
+
+    def test_policy_blocks_foreign_code_and_framing(self, client: Client, published):
+        policy = page(client, published)["Content-Security-Policy"]
+        directives = dict(d.strip().split(" ", 1) for d in policy.split(";"))
+
+        assert "'unsafe-inline'" not in policy and "'unsafe-eval'" not in policy
+        assert directives["script-src"].startswith("'self' 'nonce-")
+        assert directives["object-src"] == "'none'"
+        assert directives["frame-ancestors"] == "'none'"
+
+    def test_storage_hosts_are_allowed_for_photos_and_uploads(self):
+        from config.settings.base import _storage_origins
+
+        assert _storage_origins("https://acct.r2.cloudflarestorage.com") == [
+            "https://acct.r2.cloudflarestorage.com",
+            "https://*.acct.r2.cloudflarestorage.com",
+        ]
+        assert _storage_origins(None) == []

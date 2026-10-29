@@ -74,14 +74,34 @@ class TestGalleryCrud:
     def test_set_and_clear_password(self, auth_client, own_gallery):
         url = reverse("gallery-detail", args=[own_gallery.pk])
 
-        set_response = auth_client.patch(url, {"password": "family"}, format="json")
+        set_response = auth_client.patch(url, {"password": "family-2026"}, format="json")
         own_gallery.refresh_from_db()
         assert set_response.data["has_password"] is True
         assert "password" not in set_response.data
-        assert own_gallery.check_access_password("family")
+        assert own_gallery.check_access_password("family-2026")
 
         clear_response = auth_client.patch(url, {"password": None}, format="json")
         assert clear_response.data["has_password"] is False
+
+    @pytest.mark.parametrize("password", ["1", "1234", "seven77"])
+    def test_short_passwords_are_refused(self, auth_client, own_gallery, password):
+        """A guessable password (a PIN, a short word) would fall to slow, patient guessing."""
+        response = auth_client.patch(
+            reverse("gallery-detail", args=[own_gallery.pk]), {"password": password}, format="json"
+        )
+
+        assert response.status_code == 400
+        assert "8 characters" in str(response.data["password"])
+
+    def test_short_password_is_refused_when_creating(self, auth_client, own_gallery):
+        response = auth_client.post(
+            reverse("gallery-list"),
+            {"event": str(own_gallery.event.pk), "title": "Second", "password": "1234"},
+            format="json",
+        )
+
+        assert response.status_code == 400
+        assert "password" in response.data
 
     def test_status_and_token_are_read_only(self, auth_client, own_gallery):
         original_token = own_gallery.public_token

@@ -213,6 +213,12 @@ progress {
   letter-spacing: 0.04em;
 }
 
+/* Sign-in shows the wordmark alone, at the guest pages' size, tight to its tagline. */
+.wordmark {
+  margin: 0 0 4px;
+  font-size: 2.5rem;
+}
+
 .brand__tagline {
   margin: 0;
   color: var(--muted);

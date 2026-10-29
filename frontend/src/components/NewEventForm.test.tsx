@@ -66,6 +66,18 @@ test('creates the event, then its gallery, and hands the gallery back', async ()
   expect(onCreated).toHaveBeenCalledWith(gallery)
 })
 
+test('a password shorter than 8 characters is stopped before anything is created', async () => {
+  const api = fakeApi()
+  render(<NewEventForm api={api} onCreated={vi.fn()} onCancel={vi.fn()} />)
+  const user = await fillIn()
+  await user.type(screen.getByLabelText(/Gallery password/), '1234')
+
+  await user.click(screen.getByRole('button', { name: 'Create event' }))
+
+  expect(screen.getByRole('alert')).toHaveTextContent('at least 8 characters')
+  expect(api.createEvent).not.toHaveBeenCalled()
+})
+
 test('no password is sent when the field is empty', async () => {
   const api = fakeApi()
   render(<NewEventForm api={api} onCreated={vi.fn()} onCancel={vi.fn()} />)

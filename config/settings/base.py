@@ -1,7 +1,9 @@
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import environ
 from celery.schedules import crontab
+from django.utils.csp import CSP
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -31,6 +33,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "django.middleware.csp.ContentSecurityPolicyMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -49,6 +52,7 @@ TEMPLATES = [
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.request",
+                "django.template.context_processors.csp",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "galleries.context_processors.support",
@@ -144,6 +148,32 @@ OBJECT_STORAGE = {
     "REGION": env("STORAGE_REGION", default="auto"),
     "ACCESS_KEY_ID": env("STORAGE_ACCESS_KEY_ID", default=None),
     "SECRET_ACCESS_KEY": env("STORAGE_SECRET_ACCESS_KEY", default=None),
+}
+
+
+def _storage_origins(endpoint: str | None) -> list[str]:
+    """Photos load from, and the dashboard uploads to, the bucket's host: path-style URLs use
+    the endpoint itself, virtual-hosted ones a subdomain of it."""
+    if not endpoint:
+        return []
+    parts = urlsplit(endpoint)
+    return [f"{parts.scheme}://{parts.netloc}", f"{parts.scheme}://*.{parts.netloc}"]
+
+
+# Content-Security-Policy: only this site's own files, plus inline scripts and styles carrying
+# the per-response nonce, may run, so injected markup can't execute. No form-action: Chrome
+# applies it to the redirect after a form post, which would block the hop to Flutterwave.
+STORAGE_ORIGINS = _storage_origins(OBJECT_STORAGE["ENDPOINT_URL"])
+SECURE_CSP = {
+    "default-src": [CSP.SELF],
+    "script-src": [CSP.SELF, CSP.NONCE],
+    "style-src": [CSP.SELF, CSP.NONCE],
+    "img-src": [CSP.SELF, "data:", *STORAGE_ORIGINS],
+    "connect-src": [CSP.SELF, *STORAGE_ORIGINS],
+    "font-src": [CSP.SELF],
+    "object-src": [CSP.NONE],
+    "base-uri": [CSP.SELF],
+    "frame-ancestors": [CSP.NONE],
 }
 
 UPLOADS = {

@@ -120,7 +120,7 @@ form.busy .checking-hides { opacity: 0; pointer-events: none; }
     <p class="helper signin">Photographer? <a href="{% url 'dashboard' %}">Sign in to your dashboard</a></p>
   </div>
 </main>
-<script>
+<script nonce="{{ csp_nonce }}">
 /* Passkey boxes: type, paste or scan (?k= fills them), then the boxes swing into a ring while
    the server checks, turn green when it says yes, and shake when it says no. The plain field
    stays the one the form submits, so this is only ever an enhancement. */

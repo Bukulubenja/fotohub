@@ -65,7 +65,7 @@ label.field input { min-height: 48px; padding: 0 14px; border: 1px solid var(--l
   {% endif %}
 </main>
 {% include "galleries/public/_nav.html" with active="cart" %}
-<script>
+<script nonce="{{ csp_nonce }}">
 (() => {
   // The phone number only matters for mobile money.
   const form = document.querySelector("[data-checkout]");

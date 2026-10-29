@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex, nofollow">
 <title>{% block title %}{{ brand_name }}{% endblock %}</title>
 {% block meta %}{% endblock %}
-<style>
+<style nonce="{{ csp_nonce }}">
 /* Inter, self-hosted (SIL OFL, see the OFL.txt beside it): one 48 KB variable file. Guests are
    often on mobile data, so this keeps the weight-only cut (the dashboard adds optical sizing).
    Alumni Sans Inline One (27 KB) is display-only, for the wordmark; a browser fetches it only

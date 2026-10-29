@@ -244,6 +244,29 @@ class TestWebhook:
         assert response.status_code == 200
         assert payment.status == Payment.Status.SUCCEEDED
 
+    def test_only_the_configured_provider_is_heard(self, client: Client, auth_client, settings):
+        """In production (Flutterwave) the test provider's webhook is closed, even if its
+        secret leaked into the settings: otherwise a forged 'succeeded' would grant a plan."""
+        auth_client.post(
+            reverse("payment-list"), {"plan": "pro", "phone": "0772123456"}, format="json"
+        )
+        payment = Payment.objects.get()
+        settings.BILLING = {**settings.BILLING, "PROVIDER": "flutterwave"}
+
+        response = self.post(
+            client,
+            {
+                "reference": payment.provider_reference,
+                "status": "succeeded",
+                "amount_minor": payment.amount_ugx,
+                "currency": "UGX",
+            },
+        )
+
+        payment.refresh_from_db()
+        assert response.status_code == 404
+        assert payment.status == Payment.Status.PENDING
+
     def test_wrong_secret_is_rejected(self, client: Client):
         assert self.post(client, {"reference": "x"}, secret="guess").status_code == 400
 

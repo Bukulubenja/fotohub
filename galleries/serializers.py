@@ -99,6 +99,9 @@ class EventSerializer(serializers.ModelSerializer):
             self.fields["collection"].queryset = Collection.objects.owned_by(request.user)
 
 
+MIN_GALLERY_PASSWORD_LENGTH = 8
+
+
 class GallerySerializer(serializers.ModelSerializer):
     event = serializers.PrimaryKeyRelatedField(queryset=Event.objects.none())
     password = serializers.CharField(
@@ -146,6 +149,15 @@ class GallerySerializer(serializers.ModelSerializer):
             # Only the photographer's own events are valid targets (tenant isolation).
             self.fields["event"].queryset = Event.objects.owned_by(request.user)
             self.fields["cover_photo"].queryset = Photo.objects.owned_by(request.user)
+
+    def validate_password(self, value: str | None) -> str | None:
+        # Blank or null clears the password; a set one must outlast slow, patient guessing.
+        if value and len(value) < MIN_GALLERY_PASSWORD_LENGTH:
+            raise serializers.ValidationError(
+                f"Use at least {MIN_GALLERY_PASSWORD_LENGTH} characters: two words and a number "
+                "work well."
+            )
+        return value
 
     def validate_expires_at(self, value):
         unchanged = self.instance is not None and value == self.instance.expires_at

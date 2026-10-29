@@ -115,6 +115,20 @@ class TestPasswordProtection:
 
         assert statuses == [403, 403, 403, 429]
 
+    def test_right_passwords_do_not_use_up_the_gallery_limit(
+        self, api_client, locked_gallery, strict_throttle
+    ):
+        """Only wrong guesses count against the shared per-gallery limit, so a stranger can't
+        lock real guests out, and guests opening the gallery don't block each other."""
+        for i in range(5):
+            response = api_client.post(
+                unlock_url(locked_gallery),
+                {"password": "family"},
+                format="json",
+                REMOTE_ADDR=f"10.0.1.{i}",
+            )
+            assert response.status_code == 204
+
     def test_wrong_password_is_rejected(self, api_client, locked_gallery):
         response = api_client.post(unlock_url(locked_gallery), {"password": "nope"}, format="json")
 

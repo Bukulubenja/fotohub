@@ -19,7 +19,7 @@
 
 {{ cart_ids|json_script:"cart-ids" }}
 {{ favourite_ids|json_script:"favourite-ids" }}
-<script>
+<script nonce="{{ csp_nonce }}">
 (() => {
   const grid = document.querySelector("[data-grid]");
   const box = document.querySelector("[data-lightbox]");

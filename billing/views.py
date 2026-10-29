@@ -1,5 +1,6 @@
 import logging
 
+from django.conf import settings
 from django.http import HttpRequest, HttpResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
@@ -76,6 +77,10 @@ class PaymentViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.
 @csrf_exempt  # called by the provider's servers; authenticity comes from its signature
 @require_POST
 def provider_webhook(request: HttpRequest, provider: str) -> HttpResponse:
+    # Charges only go through the configured provider, so only it may settle them. This keeps
+    # the test provider's webhook closed in production even if its secret is ever set there.
+    if provider != settings.BILLING["PROVIDER"]:
+        return HttpResponse(status=404)
     try:
         outcome = get_provider(provider).parse_webhook(request)
     except LookupError:

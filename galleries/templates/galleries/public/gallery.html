@@ -137,7 +137,7 @@
 {% include "galleries/public/_lightbox.html" %}
 
 {{ share_data|json_script:"share-data" }}
-<script>
+<script nonce="{{ csp_nonce }}">
 (() => {
   // Share sheet on phones, copy link elsewhere; WhatsApp link works without JS.
   const share = document.querySelector("[data-share]");
@@ -153,7 +153,7 @@
   });
 })();
 </script>
-<script>
+<script nonce="{{ csp_nonce }}">
 (() => {
   // Stop the drifting wall once it scrolls away, to spare the battery on cheap phones.
   const intro = document.querySelector("[data-intro]");

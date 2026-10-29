@@ -13,6 +13,9 @@ function endOfDay(date: string): string {
   return new Date(`${date}T23:59:59`).toISOString()
 }
 
+/** The API refuses shorter gallery passwords (GallerySerializer.validate_password). */
+const MIN_PASSWORD_LENGTH = 8
+
 /** One step for the photographer: the event, and the private gallery guests will open. */
 export function NewEventForm({
   onCreated,
@@ -41,6 +44,11 @@ export function NewEventForm({
 
   const submit = async (formEvent: FormEvent) => {
     formEvent.preventDefault()
+    if (password && password.length < MIN_PASSWORD_LENGTH) {
+      // Checked before the event exists, so a short password never leaves a stray event behind.
+      setError(`Use at least ${MIN_PASSWORD_LENGTH} characters for the gallery password.`)
+      return
+    }
     setBusy(true)
     setError('')
     try {
@@ -142,12 +150,13 @@ export function NewEventForm({
         )}
         <div className="new-event__row">
           <label>
-            Gallery password <span className="muted">(optional)</span>
+            Gallery password <span className="muted">(optional, 8+ characters)</span>
             <input
               type="text"
               autoComplete="off"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              minLength={MIN_PASSWORD_LENGTH}
               maxLength={128}
             />
           </label>

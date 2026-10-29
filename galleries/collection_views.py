@@ -13,7 +13,6 @@ from django.http import HttpRequest, HttpResponse, HttpResponseRedirect, JsonRes
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_GET, require_http_methods
-from rest_framework.throttling import SimpleRateThrottle
 
 from assets.gallery_media import Image, thumb
 from assets.models import Photo
@@ -21,6 +20,7 @@ from billing import services as billing
 from galleries import collections
 from galleries.models import Collection, Gallery
 from galleries.public_views import TOO_MANY_TRIES, private_page, unavailable
+from galleries.throttling import MissThrottle
 
 WRONG_PASSKEY = "That passkey isn't right. Check the message from your photographer or school."
 SUSPENDED = "This collection is temporarily unavailable. Contact your photographer."
@@ -40,27 +40,11 @@ class GalleryCard:
     thumbs: list[Image]  # cover first; empty until a photo is ready
 
 
-class PasskeyMisses(SimpleRateThrottle):
+class PasskeyMisses(MissThrottle):
     """Wrong passkeys per visitor (`collection_unlock`). Only misses count: a school's parents
-    behind one Wi-Fi share an IP, and right entries mustn't use up each other's allowance.
-    Uses DRF's rate parsing and cache history, so the rate lives with the other throttles."""
+    behind one Wi-Fi share an IP, and right entries mustn't use up each other's allowance."""
 
     scope = "collection_unlock"
-
-    def get_cache_key(self, request, view) -> str:
-        return self.cache_format % {"scope": self.scope, "ident": self.get_ident(request)}
-
-    def _recent(self, request: HttpRequest) -> list[float]:
-        self.key = self.get_cache_key(request, None)
-        self.now = self.timer()
-        return [t for t in self.cache.get(self.key, []) if t > self.now - self.duration]
-
-    def blocked(self, request: HttpRequest) -> bool:
-        return len(self._recent(request)) >= self.num_requests
-
-    def record(self, request: HttpRequest) -> None:
-        recent = self._recent(request)
-        self.cache.set(self.key, [self.now, *recent], self.duration)
 
 
 def home_form(request: HttpRequest, passkey: str = "", error: str = "", status: int = 200):
