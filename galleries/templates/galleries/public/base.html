@@ -7,17 +7,25 @@
 <title>{% block title %}{{ brand_name }}{% endblock %}</title>
 {% block meta %}{% endblock %}
 <style>
-/* Inter, self-hosted (SIL OFL, see the OFL.txt beside it): one 48 KB variable file. */
+/* Inter, self-hosted (SIL OFL, see the OFL.txt beside it): one 48 KB variable file. Guests are
+   often on mobile data, so this keeps the weight-only cut (the dashboard adds optical sizing).
+   Alumni Sans Inline One (27 KB) is display-only, for the wordmark; a browser fetches it only
+   on pages that show one. */
 @font-face {
   font-family: "Inter"; font-style: normal; font-weight: 100 900; font-display: swap;
   src: url("{% static 'galleries/fonts/inter-latin-wght-normal.woff2' %}") format("woff2");
+}
+@font-face {
+  font-family: "Alumni Sans Inline One"; font-style: normal; font-weight: 400; font-display: swap;
+  src: url("{% static 'galleries/fonts/alumni-sans-inline-one-latin-400-normal.woff2' %}") format("woff2");
 }
 /* Leaf palette (owner's reference, 2026-10-28): lime #C0DE7B, leaf #79B425, deep #054204,
    forest #1D6517, sky #55A6C3. Lime, leaf and sky are too light for text on white, so they only
    tint, ring and highlight; text and buttons use forest and deep green (forest on white ~7:1). */
 :root {
-  --ink: #054204; --text: #0d2a10; --muted: #4b5e47;
-  --bg: #f4f8ee; --surface: #ffffff; --line: #dbe7cf;
+  /* Canvas, text, muted and line are the product spec's neutrals (§7); muted on bg is ~5:1. */
+  --ink: #054204; --text: #172417; --muted: #5f6e60;
+  --bg: #f7f9f4; --surface: #ffffff; --line: #dce6d7;
   --accent: #1d6517; --accent-ink: #ffffff;
   --leaf: #79b425; --lime: #c0de7b; --sky: #55a6c3; --lime-wash: #eef6dc;
   --success: #1d6517; --success-text: #1d6517; --highlight: #c0de7b; --highlight-ink: #054204;
@@ -26,6 +34,7 @@
   /* The photo intro and tab bar are dark in both themes. */
   --night: #04160a; --night-2: #0b2610; --night-muted: #a3b89c; --night-text: #e6f2dc;
   --sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --display: "Alumni Sans Inline One", var(--sans);
   /* Type scale: page title 36-48px, section 20-28px, buttons and menus 15px, body 16px,
      dates and captions 13px, badges 12px. */
   --title: 700 clamp(36px, 2.5vw + 27px, 48px)/1.1 var(--sans);
@@ -66,6 +75,8 @@ a { color: inherit; }
   outline: 3px solid var(--accent); outline-offset: 2px;
 }
 .banner { background: var(--lime-wash); color: var(--ink); font-size: var(--ui); padding: 10px 16px; text-align: center; }
+/* The inline display face needs size to stay legible, so the wordmark is 40px, never small. */
+.wordmark { color: var(--accent); font: 400 40px/1 var(--display); letter-spacing: .04em; }
 .tagline { margin: -2px 0 6px; color: var(--muted); font: italic 400 var(--small)/1.4 var(--sans); }
 .eyebrow { color: var(--accent); font: 600 var(--small)/1.4 var(--sans); letter-spacing: .06em; text-transform: uppercase; }
 h1 { font: var(--title); margin: 4px 0 8px; letter-spacing: -.02em; }

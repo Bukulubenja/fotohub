@@ -123,15 +123,20 @@ class TestDataBudget:
         assert "<script src=" not in html
         assert "fonts.googleapis" not in html and "fonts.gstatic" not in html
 
-    def test_the_one_web_font_is_ours_and_small(self, client: Client, full_page):
-        """Inter (blueprint typeface) is the only extra download: self-hosted, cached after the
-        first visit, and small enough to keep the first screen far under 1 MB (plan §3.3)."""
+    def test_web_fonts_are_ours_and_small(self, client: Client, full_page):
+        """Inter (UI) and Alumni Sans Inline One (wordmark only) are the only extra downloads:
+        self-hosted, cached after the first visit, and small enough to keep the first screen
+        far under 1 MB (plan §3.3)."""
         html = page(client, full_page).content.decode()
 
+        fonts = [
+            "galleries/fonts/inter-latin-wght-normal.woff2",
+            "galleries/fonts/alumni-sans-inline-one-latin-400-normal.woff2",
+        ]
         sources = re.findall(r'url\("([^"]+)"\)', html)
-        assert sources == [static("galleries/fonts/inter-latin-wght-normal.woff2")]
-        font = finders.find("galleries/fonts/inter-latin-wght-normal.woff2")
-        assert Path(font).stat().st_size <= MAX_FONT_BYTES
+        assert sources == [static(font) for font in fonts]
+        for font in fonts:
+            assert Path(finders.find(font)).stat().st_size <= MAX_FONT_BYTES
 
     def test_images_reserve_their_space(self, client: Client, full_page):
         html = page(client, full_page).content.decode()

@@ -24,7 +24,7 @@ export function LoginForm({ onLogin }: { onLogin: (me: Me) => void }) {
   return (
     <main className="auth">
       <form className="panel auth__form" onSubmit={submit}>
-        <h1>{BRAND_NAME}</h1>
+        <h1 className="wordmark">{BRAND_NAME}</h1>
         <p className="brand__tagline">{BRAND_TAGLINE}</p>
         <p className="muted">Sign in to upload and deliver your galleries.</p>
         <label>

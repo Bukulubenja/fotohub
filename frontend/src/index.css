@@ -1,20 +1,40 @@
-/* Inter (SIL OFL, see fonts/OFL.txt), the blueprint typeface; Vite bundles and hashes it. */
+/* Fonts from the product spec (§7), self-hosted (SIL OFL, see fonts/OFL.txt); Vite bundles and
+   hashes them. Inter with its optical-size axis is the UI face; Alumni Sans Inline One is
+   display-only (the wordmark), never body text or controls. Browsers fetch a face only once
+   text on the page uses it, so the italic costs nothing until the tagline renders. */
 @font-face {
   font-family: 'Inter';
   font-style: normal;
   font-weight: 100 900;
   font-display: swap;
-  src: url('./fonts/inter-latin-wght-normal.woff2') format('woff2');
+  src: url('./fonts/inter-latin-opsz-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('./fonts/inter-latin-opsz-italic.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Alumni Sans Inline One';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/alumni-sans-inline-one-latin-400-normal.woff2') format('woff2');
 }
 
 /* Leaf palette, the same as the guest pages (galleries/.../base.html): forest and deep green
-   carry text and buttons; lime, leaf and sky only tint, because they're too light for text. */
+   carry text and buttons; lime, leaf and sky only tint, because they're too light for text.
+   Canvas, text, muted and border are the spec's neutrals (§7); muted on canvas is ~5:1. */
 :root {
-  --bg: #f4f8ee;
+  --bg: #f7f9f4;
   --surface: #ffffff;
-  --text: #0d2a10;
-  --muted: #4b5e47;
-  --border: #dbe7cf;
+  --text: #172417;
+  --muted: #5f6e60;
+  --border: #dce6d7;
   --accent: #1d6517;
   --accent-text: #ffffff;
   --lime-wash: #eef6dc;
@@ -28,6 +48,7 @@
   --fs-section: 1.25rem;
   --fs-ui: 0.9375rem;
   --fs-small: 0.8125rem;
+  --display: 'Alumni Sans Inline One', 'Inter', system-ui, sans-serif;
   --radius: 12px;
   --gap: 16px;
   color-scheme: light;
@@ -184,8 +205,11 @@ progress {
   line-height: 1.15;
 }
 
-.brand strong {
+/* The inline display face needs size to stay legible, hence 2rem rather than the UI size. */
+.brand strong,
+.wordmark {
   color: var(--accent);
+  font: 400 2rem/1 var(--display);
   letter-spacing: 0.04em;
 }
 
