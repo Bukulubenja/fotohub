@@ -80,6 +80,8 @@ export type UploadTarget =
       expires_at: string
     }
   | { type: 'multipart'; part_size: number; part_count: number; expires_at: string }
+  /** The same photo (name and size) is already in the gallery: nothing to send. */
+  | { type: 'existing' }
 
 export interface StartedUpload {
   photo: Photo

@@ -336,6 +336,16 @@ progress {
   display: block;
 }
 
+.notice--ok {
+  background: var(--lime-wash);
+  color: var(--text);
+  display: block;
+}
+
+.notice--ok p {
+  margin: 0;
+}
+
 .files {
   list-style: none;
   margin: var(--gap) 0 0;

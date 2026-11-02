@@ -79,6 +79,12 @@ class UploadViewSet(OwnedPhotoMixin, viewsets.GenericViewSet):
         serializer = StartUploadSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
+        existing = services.already_uploaded(data["gallery"], data["filename"], data["size"])
+        if existing is not None:
+            # Nothing to send: the dashboard marks the file "Already in the gallery".
+            return Response(
+                {"photo": PhotoSerializer(existing).data, "upload": {"type": "existing"}}
+            )
         photo = _call(
             services.start_upload,
             request.user,

@@ -6,8 +6,9 @@ from django.urls import reverse
 from django.utils import timezone
 
 from assets.models import Photo, UploadSession
-from assets.tests.factories import make_jpeg
+from assets.tests.factories import PhotoFactory, make_jpeg, ready_photo
 from galleries.models import Gallery
+from galleries.tests.factories import EventFactory, GalleryFactory
 
 pytestmark = pytest.mark.django_db
 
@@ -313,3 +314,55 @@ class TestMultipartUpload:
 
         assert response.status_code == 409
         assert auth_client.get(reverse("upload-parts", args=[photo_id])).data == {"parts": []}
+
+
+class TestAlreadyUploaded:
+    """After a dropped connection or a closed laptop, choosing the same photos again sends only
+    the ones that never arrived (the school's upload test, 2026-11-02)."""
+
+    def test_a_photo_already_in_the_gallery_is_not_sent_again(self, auth_client, gallery, storage):
+        existing = ready_photo(gallery, original_filename="IMG_0001.jpg", size_bytes=900)
+
+        response = start(auth_client, gallery, size=900, filename="IMG_0001.jpg")
+
+        assert response.status_code == 200
+        assert response.data["upload"] == {"type": "existing"}
+        assert response.data["photo"]["id"] == str(existing.pk)
+        assert Photo.objects.filter(gallery=gallery).count() == 1
+
+    def test_a_photo_still_processing_counts_as_arrived(self, auth_client, gallery, storage):
+        PhotoFactory(
+            gallery=gallery,
+            original_filename="IMG_0001.jpg",
+            size_bytes=900,
+            status=Photo.Status.PROCESSING,
+        )
+
+        assert start(auth_client, gallery, size=900).data["upload"] == {"type": "existing"}
+
+    @pytest.mark.parametrize(("filename", "size"), [("IMG_0001.jpg", 901), ("IMG_0002.jpg", 900)])
+    def test_a_different_photo_uploads(self, auth_client, gallery, storage, filename, size):
+        ready_photo(gallery, original_filename="IMG_0001.jpg", size_bytes=900)
+
+        response = start(auth_client, gallery, size=size, filename=filename)
+
+        assert response.status_code == 201
+        assert response.data["upload"]["type"] == "single"
+
+    @pytest.mark.parametrize("state", [Photo.Status.UPLOADING, Photo.Status.FAILED])
+    def test_unfinished_or_failed_uploads_are_sent_again(
+        self, auth_client, gallery, storage, state
+    ):
+        PhotoFactory(
+            gallery=gallery, original_filename="IMG_0001.jpg", size_bytes=900, status=state
+        )
+
+        assert start(auth_client, gallery, size=900).status_code == 201
+
+    def test_the_same_photo_in_another_gallery_uploads(
+        self, auth_client, gallery, photographer, storage
+    ):
+        other = GalleryFactory(event=EventFactory(owner=photographer))
+        ready_photo(other, original_filename="IMG_0001.jpg", size_bytes=900)
+
+        assert start(auth_client, gallery, size=900).status_code == 201

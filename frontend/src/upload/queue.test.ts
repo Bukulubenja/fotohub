@@ -334,3 +334,56 @@ test('summary counts failures for the retry banner', async () => {
 
   expect(queue.summary()).toMatchObject({ total: 3, done: 2, failed: 1, active: 0 })
 })
+
+test('a photo already in the gallery is not sent again', async () => {
+  const existing: StartedUpload = { photo: { id: 'old' } as StartedUpload['photo'], upload: { type: 'existing' } }
+  const api = fakeApi({ start: vi.fn(async () => existing) })
+  const queue = makeQueue(api)
+
+  queue.add([{ file: file('a.jpg', 100), contentType: 'image/jpeg' }])
+  await settled(queue)
+
+  const [item] = queue.getSnapshot()
+  expect(item).toMatchObject({ status: 'done', skipped: true, uploadedBytes: 100 })
+  expect(okTransport).not.toHaveBeenCalled()
+  expect(api.complete).not.toHaveBeenCalled()
+  expect(queue.summary()).toMatchObject({ done: 1, skipped: 1 })
+})
+
+test('while the connection is down the file says so, and the summary flags it', async () => {
+  let release: () => void = () => undefined
+  const network = {
+    isOnline: () => false,
+    waitForOnline: vi.fn(() => new Promise<void>((resolve) => { release = resolve })),
+  }
+  const transport = vi.fn()
+    .mockRejectedValueOnce(new TransportError(0, 'Connection lost while uploading.'))
+    .mockImplementation(okTransport)
+  const queue = new UploadQueue({ gallery: 'g1', api: fakeApi(), transport, sleep: noSleep, network })
+
+  queue.add([{ file: file('a.jpg', 10), contentType: 'image/jpeg' }])
+
+  await vi.waitFor(() => expect(queue.getSnapshot()[0].waiting).toBe('offline'))
+  expect(queue.summary().offline).toBe(true)
+  network.isOnline = () => true
+  release()
+  await settled(queue)
+  expect(queue.getSnapshot()[0]).toMatchObject({ status: 'done', waiting: undefined })
+  expect(queue.summary().offline).toBe(false)
+})
+
+test('a file between retries says it is retrying', async () => {
+  let wake: () => void = () => undefined
+  const sleep = vi.fn(() => new Promise<void>((resolve) => { wake = resolve }))
+  const transport = vi.fn()
+    .mockRejectedValueOnce(new TransportError(503, 'Storage is busy.'))
+    .mockImplementation(okTransport)
+  const queue = new UploadQueue({ gallery: 'g1', api: fakeApi(), transport, sleep })
+
+  queue.add([{ file: file('a.jpg', 10), contentType: 'image/jpeg' }])
+
+  await vi.waitFor(() => expect(queue.getSnapshot()[0].waiting).toBe('retrying'))
+  wake()
+  await settled(queue)
+  expect(queue.getSnapshot()[0].waiting).toBeUndefined()
+})

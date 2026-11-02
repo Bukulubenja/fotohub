@@ -21,7 +21,8 @@ function fakeQueue() {
 }
 
 const emptySummary: UploadSummary = {
-  total: 0, done: 0, failed: 0, active: 0, uploadedBytes: 0, totalBytes: 0,
+  total: 0, done: 0, failed: 0, active: 0, skipped: 0, offline: false, retrying: false,
+  uploadedBytes: 0, totalBytes: 0,
 }
 
 function item(name: string, status: UploadItem['status'], error?: string): UploadItem {
@@ -88,4 +89,36 @@ test('finished files collapse out of the list; problems are listed first', () =>
 
   const names = screen.getAllByRole('listitem').map((li) => li.querySelector('.file__name')?.textContent)
   expect(names).toEqual(['bad.jpg', 'up.jpg'])
+})
+
+test('a lost connection is explained, and each paused file says why', () => {
+  const items = [
+    { ...item('a.jpg', 'uploading'), waiting: 'offline' as const },
+    { ...item('b.jpg', 'uploading'), waiting: 'retrying' as const },
+  ]
+  const summary = { ...emptySummary, total: 2, active: 2, offline: true, retrying: true, totalBytes: 2 }
+  render(<UploadPanel queue={fakeQueue()} items={items} summary={summary} config={config} />)
+
+  expect(screen.getByRole('status', { name: '' })).toHaveTextContent(/No internet/)
+  expect(screen.getByText(/continue by themselves/)).toBeInTheDocument()
+  expect(screen.getByText(/Waiting for internet/)).toBeInTheDocument()
+  expect(screen.getByText(/Connection problem, retrying/)).toBeInTheDocument()
+})
+
+test('a finished batch says every photo is in the gallery, counting ones already there', () => {
+  const items = [item('a.jpg', 'done'), { ...item('b.jpg', 'done'), skipped: true }]
+  const summary = { ...emptySummary, total: 2, done: 2, skipped: 1, uploadedBytes: 2, totalBytes: 2 }
+  render(<UploadPanel queue={fakeQueue()} items={items} summary={summary} config={config} />)
+
+  expect(screen.getByText('All 2 photos are in the gallery.')).toBeInTheDocument()
+  expect(screen.getByText(/1 photo was already there, so it wasn't sent again/)).toBeInTheDocument()
+})
+
+test('no "all done" message while anything failed', () => {
+  const items = [item('a.jpg', 'done'), item('b.jpg', 'failed', 'Connection lost')]
+  const summary = { ...emptySummary, total: 2, done: 1, failed: 1, totalBytes: 2, uploadedBytes: 1 }
+  render(<UploadPanel queue={fakeQueue()} items={items} summary={summary} config={config} />)
+
+  expect(screen.queryByText(/are in the gallery/)).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Retry it' })).toBeInTheDocument()
 })

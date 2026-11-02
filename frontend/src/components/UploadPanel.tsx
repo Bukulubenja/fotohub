@@ -12,6 +12,11 @@ const STATUS_LABEL: Record<UploadItem['status'], string> = {
   failed: 'Failed',
   cancelled: 'Cancelled',
 }
+// Why an active file is paused, in words a photographer on a patchy connection can act on.
+const WAITING_LABEL: Record<NonNullable<UploadItem['waiting']>, string> = {
+  offline: 'Waiting for internet',
+  retrying: 'Connection problem, retrying',
+}
 // Problems first, then work in progress; finished files collapse into a count.
 const ORDER: UploadItem['status'][] = ['failed', 'uploading', 'completing', 'queued']
 
@@ -42,6 +47,7 @@ export function UploadPanel({ queue, items, summary, config }: Props) {
   const visible = ORDER.flatMap((status) => items.filter((i) => i.status === status))
   const percent = summary.totalBytes ? Math.round((summary.uploadedBytes / summary.totalBytes) * 100) : 0
   const busy = summary.active > 0 || items.some((i) => i.status === 'queued')
+  const allIn = !busy && summary.total > 0 && summary.failed === 0 && summary.done === summary.total
 
   return (
     <section className="panel" aria-label="Upload photos">
@@ -104,6 +110,34 @@ export function UploadPanel({ queue, items, summary, config }: Props) {
         </div>
       )}
 
+      {summary.offline ? (
+        <div className="notice notice--warn" role="status">
+          <strong>No internet.</strong> Your uploads will continue by themselves when you're back
+          online. Keep this page open.
+        </div>
+      ) : (
+        summary.retrying && (
+          <div className="notice notice--warn" role="status">
+            The connection is unsteady, so some photos are being retried. Keep this page open.
+          </div>
+        )
+      )}
+
+      {allIn && (
+        <div className="notice notice--ok" role="status">
+          <p>
+            <strong>All {plural(summary.total, 'photo')} are in the gallery.</strong>
+          </p>
+          {summary.skipped > 0 && (
+            <p>
+              {summary.skipped === 1
+                ? "1 photo was already there, so it wasn't sent again."
+                : `${summary.skipped.toLocaleString()} photos were already there, so they weren't sent again.`}
+            </p>
+          )}
+        </div>
+      )}
+
       {summary.failed > 0 && (
         <div className="notice notice--error" role="status">
           <span>
@@ -122,7 +156,7 @@ export function UploadPanel({ queue, items, summary, config }: Props) {
               <div className="file__main">
                 <span className="file__name">{item.file.name}</span>
                 <span className="file__meta">
-                  {STATUS_LABEL[item.status]}
+                  {item.waiting ? WAITING_LABEL[item.waiting] : STATUS_LABEL[item.status]}
                   {item.status === 'uploading' &&
                     ` · ${Math.round((item.uploadedBytes / item.file.size) * 100)}%`}
                   {item.error && ` · ${item.error}`}

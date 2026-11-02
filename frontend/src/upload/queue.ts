@@ -19,6 +19,10 @@ export interface UploadItem {
   readonly uploadedBytes: number
   readonly photoId?: string
   readonly error?: string
+  /** The photo was already in the gallery, so nothing was sent (status is 'done'). */
+  readonly skipped?: boolean
+  /** Why an active file is paused: no connection at all, or between retries of a hiccup. */
+  readonly waiting?: 'offline' | 'retrying'
 }
 
 export interface UploadSummary {
@@ -26,6 +30,12 @@ export interface UploadSummary {
   done: number
   failed: number
   active: number
+  /** Of `done`, how many were already in the gallery. */
+  skipped: number
+  /** Some file is waiting for the connection to come back. */
+  offline: boolean
+  /** Some file is waiting to retry after a connection or server hiccup. */
+  retrying: boolean
   uploadedBytes: number
   totalBytes: number
 }
@@ -107,6 +117,9 @@ export function summarize(items: readonly UploadItem[]): UploadSummary {
     done: count('done'),
     failed: count('failed'),
     active: count('uploading') + count('completing'),
+    skipped: items.filter((i) => i.status === 'done' && i.skipped).length,
+    offline: items.some((i) => i.waiting === 'offline'),
+    retrying: items.some((i) => i.waiting === 'retrying'),
     uploadedBytes: live.reduce((sum, i) => sum + i.uploadedBytes, 0),
     totalBytes: live.reduce((sum, i) => sum + i.file.size, 0),
   }
@@ -161,7 +174,7 @@ export class UploadQueue {
   retryFailed(): void {
     this.setItems(
       this.items.map((i) =>
-        i.status === 'failed' ? { ...i, status: 'queued', error: undefined } : i,
+        i.status === 'failed' ? { ...i, status: 'queued', error: undefined, waiting: undefined } : i,
       ),
     )
     this.pump()
@@ -214,29 +227,35 @@ export class UploadQueue {
       await this.process(id, controller.signal)
       if (!controller.signal.aborted) this.update(id, { status: 'done' })
     } catch (error) {
-      if (!isAbort(error)) this.update(id, { status: 'failed', error: messageOf(error) })
+      if (!isAbort(error)) {
+        this.update(id, { status: 'failed', error: messageOf(error), waiting: undefined })
+      }
     } finally {
       this.controllers.delete(id)
       this.pump()
     }
   }
 
-  private async withRetry<T>(signal: AbortSignal, step: () => Promise<T>): Promise<T> {
+  private async withRetry<T>(id: string, signal: AbortSignal, step: () => Promise<T>): Promise<T> {
     let attempt = 0
     for (;;) {
       try {
-        return await step()
+        const result = await step()
+        if (this.find(id)?.waiting) this.update(id, { waiting: undefined })
+        return result
       } catch (error) {
         if (signal.aborted) throw CANCELLED()
         if (!isRetryable(error)) throw error
         if (!this.opts.network.isOnline()) {
           // Offline time doesn't count against the file: wait for the connection, then retry.
+          this.update(id, { waiting: 'offline' })
           await this.opts.network.waitForOnline(signal)
           continue
         }
         const delay = this.opts.retryDelaysMs[attempt]
         if (delay === undefined) throw error
         attempt += 1
+        this.update(id, { waiting: 'retrying' })
         await this.opts.sleep(delay, signal)
       }
     }
@@ -245,12 +264,17 @@ export class UploadQueue {
   private async process(id: string, signal: AbortSignal): Promise<void> {
     const started = await this.target(id, signal)
     if (started === 'already-complete') return
+    if (started.upload.type === 'existing') {
+      // Sent before (e.g. ahead of a dropped connection or a reload): nothing to do.
+      this.update(id, { skipped: true, uploadedBytes: this.find(id)!.file.size })
+      return
+    }
     this.update(id, { photoId: started.photo.id })
 
     if (started.upload.type === 'single') {
       const { url, headers } = started.upload
       const file = this.find(id)!.file
-      await this.withRetry(signal, () =>
+      await this.withRetry(id, signal, () =>
         this.opts.transport({
           url,
           headers,
@@ -265,7 +289,7 @@ export class UploadQueue {
 
     if (signal.aborted) throw CANCELLED()
     this.update(id, { status: 'completing', uploadedBytes: this.find(id)!.file.size })
-    await this.withRetry(signal, () => this.opts.api.complete(started.photo.id))
+    await this.withRetry(id, signal, () => this.opts.api.complete(started.photo.id))
   }
 
   /** A fresh session, or the existing one when retrying, so quota isn't reserved twice. */
@@ -273,7 +297,7 @@ export class UploadQueue {
     const item = this.find(id)!
     if (item.photoId) {
       try {
-        return await this.withRetry(signal, () => this.opts.api.resume(item.photoId!))
+        return await this.withRetry(id, signal, () => this.opts.api.resume(item.photoId!))
       } catch (error) {
         if (!(error instanceof ApiError) || ![404, 409].includes(error.status)) throw error
         // 409: finished or expired. complete is idempotent, so it tells us which.
@@ -281,7 +305,7 @@ export class UploadQueue {
         this.update(id, { photoId: undefined, uploadedBytes: 0 })
       }
     }
-    return this.withRetry(signal, () =>
+    return this.withRetry(id, signal, () =>
       this.opts.api.start({
         gallery: this.opts.gallery,
         filename: item.file.name,
@@ -311,7 +335,7 @@ export class UploadQueue {
     const bounds = (n: number) => [(n - 1) * partSize, Math.min(n * partSize, file.size)] as const
 
     // Resume: skip parts the bucket already holds in full.
-    const stored = await this.withRetry(signal, () => this.opts.api.listParts(photoId))
+    const stored = await this.withRetry(id, signal, () => this.opts.api.listParts(photoId))
     const done = new Set(
       stored
         .filter((p) => p.Size === bounds(p.PartNumber)[1] - bounds(p.PartNumber)[0])
@@ -323,11 +347,11 @@ export class UploadQueue {
 
     for (let i = 0; i < remaining.length; i += this.opts.maxPartsPerSign) {
       const batch = remaining.slice(i, i + this.opts.maxPartsPerSign)
-      let urls = await this.withRetry(signal, () => this.opts.api.signParts(photoId, batch))
+      let urls = await this.withRetry(id, signal, () => this.opts.api.signParts(photoId, batch))
       for (const partNumber of batch) {
         const [start, end] = bounds(partNumber)
         let firstTry = true
-        await this.withRetry(signal, async () => {
+        await this.withRetry(id, signal, async () => {
           if (!firstTry) {
             // Signed URLs expire; re-sign before every retry so a long outage can recover.
             urls = { ...urls, ...(await this.opts.api.signParts(photoId, [partNumber])) }

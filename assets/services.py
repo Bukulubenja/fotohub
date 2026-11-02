@@ -94,6 +94,19 @@ def _original_key(gallery: Gallery, photo_id: uuid.UUID) -> str:
     return f"originals/{gallery.event.owner_id}/{gallery.pk}/{photo_id}"
 
 
+def already_uploaded(gallery: Gallery, filename: str, size_bytes: int) -> Photo | None:
+    """A photo with this name and size whose bytes already arrived in this gallery, so choosing
+    the same photos again after an interruption sends only the missing ones. Two different
+    photos with the same file name and exact byte size would be taken as one; camera names
+    (IMG_1234.JPG) make that vanishingly rare."""
+    return Photo.objects.filter(
+        gallery=gallery,
+        original_filename=filename,
+        size_bytes=size_bytes,
+        status__in=[Photo.Status.PROCESSING, Photo.Status.READY],
+    ).first()
+
+
 def start_upload(
     user, gallery: Gallery, *, filename: str, content_type: str, size_bytes: int
 ) -> Photo:
