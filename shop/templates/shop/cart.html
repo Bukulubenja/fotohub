@@ -8,6 +8,7 @@
 .item img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .item form { position: absolute; top: 4px; right: 4px; margin: 0; }
 .item button { width: 32px; height: 32px; border: 0; border-radius: 50%; background: rgba(0,0,0,.6); color: #fff; font-size: 18px; line-height: 1; cursor: pointer; }
+.pay-by { margin: 24px 0 8px; }
 .summary { display: flex; justify-content: space-between; align-items: baseline; border-top: 1px solid var(--line); padding-top: 16px; }
 .summary > span:first-child { font: 700 22px/1.2 var(--sans); }
 .summary > span:last-child { font-size: var(--ui); }
@@ -28,7 +29,7 @@ label.field input { min-height: 48px; padding: 0 14px; border: 1px solid var(--l
   <a class="back" href="{% url 'public-gallery-page' gallery.public_token %}">{% include "galleries/public/_back_icon.html" %}Back to the photos</a>
   <h1>Your cart</h1>
   {% if items %}
-    <p class="muted">{{ quantity }} photo{{ quantity|pluralize }} from {{ event.title }}. Each is the full, original file: {{ unit.UGX }} or {{ unit.USD }}.</p>
+    <p class="muted">{{ quantity }} photo{{ quantity|pluralize }} from {{ event.title }}. Each is the full, original file: {{ unit.UGX }}{% if card_payments %} or {{ unit.USD }}{% endif %}.</p>
     <div class="items">
       {% for photo in items %}
       <div class="item">
@@ -40,15 +41,20 @@ label.field input { min-height: 48px; padding: 0 14px; border: 1px solid var(--l
       </div>
       {% endfor %}
     </div>
-    <div class="summary"><span>{{ quantity }} photo{{ quantity|pluralize }} · <strong>{{ totals.UGX }}</strong></span><span class="muted">or {{ totals.USD }} by card</span></div>
+    <div class="summary"><span>{{ quantity }} photo{{ quantity|pluralize }} · <strong>{{ totals.UGX }}</strong></span>{% if card_payments %}<span class="muted">or {{ totals.USD }} by card</span>{% endif %}</div>
 
     <form method="post" action="{% url 'shop-checkout' gallery.public_token %}" data-checkout>
       {% csrf_token %}
+      {% if card_payments %}
       <fieldset>
         <legend>How would you like to pay?</legend>
         <label class="choice"><input type="radio" name="currency" value="UGX"{% if form.currency != "USD" %} checked{% endif %}><span>Mobile money (MTN or Airtel)</span><strong>{{ totals.UGX }}</strong></label>
         <label class="choice"><input type="radio" name="currency" value="USD"{% if form.currency == "USD" %} checked{% endif %}><span>Card (Visa, Mastercard)</span><strong>{{ totals.USD }}</strong></label>
       </fieldset>
+      {% else %}
+      <input type="hidden" name="currency" value="UGX">
+      <p class="pay-by">Pay by mobile money (MTN or Airtel): <strong>{{ totals.UGX }}</strong></p>
+      {% endif %}
       <label class="field" data-phone>Mobile money number <span class="hint-text">You'll approve the payment on this phone.</span>
         <input name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="0772 123 456" value="{{ form.phone|default:'' }}">
       </label>

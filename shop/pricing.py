@@ -18,6 +18,11 @@ class Price:
         return self.unit_minor * quantity
 
 
+def currencies() -> list[str]:
+    """What guests may pay in: shillings by mobile money, plus USD when cards are switched on."""
+    return ["UGX", "USD"] if settings.SHOP["CARD_PAYMENTS"] else ["UGX"]
+
+
 def price(currency: str) -> Price:
     if currency == "UGX":
         return Price("UGX", settings.SHOP["PRICE_UGX"])

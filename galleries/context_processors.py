@@ -5,7 +5,10 @@ from django.http import HttpRequest
 
 
 def support(request: HttpRequest) -> dict:
-    return {"support_email": settings.SUPPORT_EMAIL}
+    return {
+        "support_email": settings.SUPPORT_EMAIL,
+        "card_payments": settings.SHOP["CARD_PAYMENTS"],
+    }
 
 
 def brand(request: HttpRequest) -> dict:

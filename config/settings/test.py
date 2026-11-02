@@ -1,5 +1,5 @@
 from .base import *  # noqa: F403
-from .base import BILLING, REST_FRAMEWORK, env
+from .base import BILLING, REST_FRAMEWORK, SHOP, env
 
 SECRET_KEY = "test-only-key"
 CELERY_TASK_ALWAYS_EAGER = True
@@ -41,4 +41,5 @@ BILLING = {**BILLING, "PROVIDER": "fake", "FAKE_WEBHOOK_SECRET": "", "FAKE_AUTO_
 # if turned back on; tests of the single-school setup switch them off themselves.
 BILLING["SUBSCRIPTIONS"] = True
 SIGNUP_OPEN = True
+SHOP = {**SHOP, "CARD_PAYMENTS": True}
 FLUTTERWAVE = {"SECRET_KEY": "", "SECRET_HASH": "", "BASE_URL": "https://flutterwave.invalid/v3"}

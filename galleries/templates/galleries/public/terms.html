@@ -14,13 +14,13 @@
 
   <h2>What you buy</h2>
   <ul>
-    <li>Each photo is the photographer's full-quality original file: {{ price_ugx }} by mobile money or {{ price_usd }} by card.</li>
+    <li>Each photo is the photographer's full-quality original file: {{ price_ugx }} by mobile money{% if card_payments %} or {{ price_usd }} by card{% endif %}.</li>
     <li>Previews in the gallery are smaller and watermarked. The original is only available after payment.</li>
   </ul>
 
   <h2>Paying</h2>
   <ul>
-    <li>Pay once for every photo in your cart, by MTN or Airtel mobile money or by card. Payments are handled by Flutterwave; {{ brand_name }} never sees your card details.</li>
+    <li>Pay once for every photo in your cart, by MTN or Airtel mobile money{% if card_payments %} or by card{% endif %}. Payments are handled by a licensed payment provider; {{ brand_name }} never sees your mobile money PIN{% if card_payments %} or card details{% endif %}.</li>
     <li>Your photos unlock only after the payment provider confirms the payment to our server. Leaving the payment page early doesn't lose your order: open your order link to check its status.</li>
   </ul>
 

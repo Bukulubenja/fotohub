@@ -105,7 +105,7 @@
     <form method="post" action="{% url 'shop-cart-add-all' gallery.public_token %}">
       <button class="btn cta" type="submit">Buy all {{ unsold_count }} photo{{ unsold_count|pluralize }} · {{ unsold_total }}</button>
     </form>
-    <p class="note muted">Full-quality originals, {{ unit_price }} each (or {{ unsold_total_usd }} by card).</p>
+    <p class="note muted">Full-quality originals, {{ unit_price }} each{% if card_payments %} (or {{ unsold_total_usd }} by card){% endif %}.</p>
     {% endif %}
     {% if owned %}
     <p class="note">{% if not unsold_count %}You've bought every photo in this gallery.{% else %}You've bought {{ owned|length }} of these photos.{% endif %}{% if order_url %} <a href="{{ order_url }}">Your photos</a>{% endif %}</p>

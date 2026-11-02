@@ -241,6 +241,8 @@ FLUTTERWAVE = {
 SHOP = {
     "PRICE_USD_CENTS": env.int("SHOP_PRICE_USD_CENTS", default=27),
     "PRICE_UGX": env.int("SHOP_PRICE_UGX", default=1000),
+    # Off: mobile money only (the school's choice, 2026-11-02). On: also USD by card.
+    "CARD_PAYMENTS": env.bool("SHOP_CARD_PAYMENTS", default=False),
 }
 # The product name people see (pages, emails, payments, watermarks). Code names stay "fotohub".
 BRAND = {"NAME": "SMAGOK GALLERY", "TAGLINE": "Visit your moments"}

@@ -33,7 +33,7 @@ from galleries.public_views import (
 )
 from shop import cart, services
 from shop.models import Order
-from shop.pricing import format_money, price
+from shop.pricing import currencies, format_money, price
 
 TOO_MANY_CHECKOUTS = "Too many payment attempts. Wait a while, then try again."
 REFRESH_SECONDS = 5
@@ -42,7 +42,7 @@ REFRESH_SECONDS = 5
 def totals(quantity: int) -> dict:
     return {
         currency: format_money(currency, price(currency).total(quantity))
-        for currency in Order.Currency.values
+        for currency in currencies()
     }
 
 
@@ -125,7 +125,7 @@ def checkout(request: HttpRequest, token: str) -> HttpResponse:
     currency = request.POST.get("currency", "")
     email = request.POST.get("email", "").strip()
     try:
-        if currency not in Order.Currency.values:
+        if currency not in currencies():
             raise PaymentRejected("Choose how you'd like to pay.")
         try:
             validate_email(email)
