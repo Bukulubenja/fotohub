@@ -1,6 +1,7 @@
 from django.utils import timezone
 from rest_framework import serializers
 
+from billing import services
 from billing.lifecycle import Standing
 from billing.models import Payment, Plan, Subscription
 
@@ -19,10 +20,20 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     can_upload = serializers.SerializerMethodField()
     galleries_live = serializers.SerializerMethodField()
     days_left = serializers.SerializerMethodField()
+    # False when the school runs the system: the dashboard then shows no plan or renewal.
+    enabled = serializers.SerializerMethodField()
 
     class Meta:
         model = Subscription
-        fields = ["plan", "paid_until", "state", "can_upload", "galleries_live", "days_left"]
+        fields = [
+            "plan",
+            "paid_until",
+            "state",
+            "can_upload",
+            "galleries_live",
+            "days_left",
+            "enabled",
+        ]
 
     def _standing(self) -> Standing:
         return self.context["standing"]
@@ -35,6 +46,9 @@ class SubscriptionSerializer(serializers.ModelSerializer):
 
     def get_galleries_live(self, subscription: Subscription) -> bool:
         return self._standing().galleries_live
+
+    def get_enabled(self, subscription: Subscription) -> bool:
+        return services.subscriptions_enabled()
 
     def get_days_left(self, subscription: Subscription) -> int:
         return max(0, (subscription.paid_until - timezone.now()).days)

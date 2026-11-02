@@ -1,0 +1,53 @@
+{% extends "galleries/public/base.html" %}
+{% block title %}Send feedback · {{ brand_name }}{% endblock %}
+{% block style %}
+.page { max-width: 560px; margin: 0 auto; padding: 24px 16px 56px; }
+.page p { max-width: var(--measure); }
+.field { display: grid; gap: 6px; margin: 0 0 16px; font-weight: 600; }
+.field .hint { font-weight: 400; color: var(--muted); font-size: var(--small); }
+.field input, .field textarea {
+  width: 100%; padding: 12px 14px; border: 1px solid var(--field-line); border-radius: var(--radius);
+  background: var(--surface); color: var(--text); font: 400 16px/1.5 var(--sans);
+}
+.field textarea { min-height: 160px; resize: vertical; }
+.trap { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+.notice--error { padding: 12px 14px; border-radius: var(--radius); background: rgba(180, 35, 24, .1); color: var(--danger); }
+.thanks { padding: 20px; border-radius: var(--radius); background: var(--lime-wash); }
+{% endblock %}
+{% block feedback_link %}{% endblock %}
+{% block body %}
+<main class="page">
+  {% if page %}<a class="back" href="{{ page }}">{% include "galleries/public/_back_icon.html" %}Back</a>{% endif %}
+  {% include "galleries/public/_wordmark.html" %}
+  {% if sent %}
+    <div class="thanks" role="status">
+      <h1>Thank you</h1>
+      <p>Your message reached the school. If you left an email or phone number, we may get back to you.</p>
+    </div>
+  {% else %}
+    <h1>Send feedback</h1>
+    <p class="muted">Tell us what works, what doesn't, or what you'd like to see. The school reads every message.</p>
+    {% if error %}<p class="notice notice--error" role="alert">{{ error }}</p>{% endif %}
+    <form method="post" action="{% url 'feedback' %}">
+      {% csrf_token %}
+      <input type="hidden" name="page" value="{{ page }}">
+      <label class="field">
+        Your message
+        <textarea name="message" required maxlength="{{ max_length }}">{{ form.message }}</textarea>
+      </label>
+      <label class="field">
+        <span>Your name <span class="hint">(optional)</span></span>
+        <input name="name" maxlength="80" autocomplete="name" value="{{ form.name }}">
+      </label>
+      <label class="field">
+        <span>Email or phone <span class="hint">(optional, if you'd like a reply)</span></span>
+        <input name="contact" maxlength="120" autocomplete="email" value="{{ form.contact }}">
+      </label>
+      <div class="trap" aria-hidden="true">
+        <label>Leave this empty <input name="website" tabindex="-1" autocomplete="off"></label>
+      </div>
+      <button class="btn" type="submit">Send feedback</button>
+    </form>
+  {% endif %}
+</main>
+{% endblock %}

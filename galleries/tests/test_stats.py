@@ -84,7 +84,7 @@ class TestSummaryApi:
         photo = ready_photo(published)
         for _ in range(4):
             page(Client(), published)
-        make_order(published, [photo, ready_photo(published)])  # UGX 1,800
+        make_order(published, [photo, ready_photo(published)])  # UGX 2,000
         make_order(published, [photo], currency="USD", unit=24)
         make_order(published, [photo], status=Order.Status.PENDING)  # not a sale
 
@@ -93,7 +93,7 @@ class TestSummaryApi:
         assert data["views"] == 4 and data["visitors"] == 4
         assert data["orders"] == 2 and data["photos_sold"] == 3
         assert data["gross"] == [
-            {"currency": "UGX", "amount_minor": 1800, "formatted": "UGX 1,800"},
+            {"currency": "UGX", "amount_minor": 2000, "formatted": "UGX 2,000"},
             {"currency": "USD", "amount_minor": 24, "formatted": "$0.24"},
         ]
         assert data["conversion_percent"] == 50.0

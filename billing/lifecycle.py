@@ -30,6 +30,10 @@ class Standing:
     galleries_live: bool
 
 
+# Subscriptions switched off (one school runs the system): everything works, always.
+ALWAYS_ACTIVE = Standing(State.ACTIVE, can_upload=True, galleries_live=True)
+
+
 def _days(name: str) -> datetime.timedelta:
     return datetime.timedelta(days=settings.BILLING[name])
 

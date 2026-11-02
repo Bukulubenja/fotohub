@@ -8,7 +8,7 @@
 {% endblock %}
 {% block body %}
 <main class="page">
-  <div class="wordmark">{{ brand_name }}</div>
+  {% include "galleries/public/_wordmark.html" %}
   <h1>Buying photos: terms and refunds</h1>
   <p class="muted">How buying photos from a {{ brand_name }} gallery works, and what to do if something goes wrong.</p>
 

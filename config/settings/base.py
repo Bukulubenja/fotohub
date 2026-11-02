@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     "billing",
     "shop",
     "ops",
+    "feedback",
 ]
 
 MIDDLEWARE = [
@@ -123,6 +124,8 @@ REST_FRAMEWORK = {
         "archive": "20/hour",
         # Starting a payment sends a prompt to a phone; don't let a loop spam someone.
         "payments": "10/hour",
+        # Guest feedback messages per visitor (each one emails support).
+        "feedback": "5/hour",
         "checkout": "20/hour",  # photo orders per visitor
     },
     # Trusted reverse proxies in front of the app. With 0, X-Forwarded-For is ignored
@@ -204,8 +207,15 @@ DELIVERY = {
     "LARGE_DOWNLOAD_BYTES": 200 * MIB,  # above this, suggest Wi-Fi
 }
 
+# One school owns and runs the system (decided 2026-11-02): the school's account is made in the
+# admin, so public sign-up is closed and photographer subscriptions are switched off. Both stay
+# in the code: turning them on makes this a multi-photographer service again.
+SIGNUP_OPEN = env.bool("SIGNUP_OPEN", default=False)
+
 # Subscriptions (spec FR-26..29). Plan prices live in the admin.
 BILLING = {
+    # Off: nothing pauses or expires, no plans are sold and no renewal reminders are sent.
+    "SUBSCRIPTIONS": env.bool("BILLING_SUBSCRIPTIONS", default=False),
     "PROVIDER": env("BILLING_PROVIDER", default="fake"),
     "TRIAL_PLAN": "trial",
     "TRIAL_DAYS": 14,
@@ -227,17 +237,17 @@ FLUTTERWAVE = {
 }
 
 # Photo sales to gallery visitors: one fixed price per photo (decided 2026-10-21).
-# FotoHub keeps the revenue. Update PRICE_UGX by hand when the exchange rate moves.
+# The school keeps the revenue. Update PRICE_UGX by hand when the exchange rate moves.
 SHOP = {
-    "PRICE_USD_CENTS": env.int("SHOP_PRICE_USD_CENTS", default=24),
-    "PRICE_UGX": env.int("SHOP_PRICE_UGX", default=900),
+    "PRICE_USD_CENTS": env.int("SHOP_PRICE_USD_CENTS", default=27),
+    "PRICE_UGX": env.int("SHOP_PRICE_UGX", default=1000),
 }
 # The product name people see (pages, emails, payments, watermarks). Code names stay "fotohub".
-BRAND = {"NAME": "SMAGOK HIVE", "TAGLINE": "a smagok archive"}
+BRAND = {"NAME": "SMAGOK GALLERY", "TAGLINE": "Visit your moments"}
 
 # Public base URL, for links in emails (receipts, reminders).
 SITE_URL = env("SITE_URL", default="http://127.0.0.1:8000")
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="SMAGOK HIVE <photos@fotohub.ug>")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="SMAGOK GALLERY <photos@fotohub.ug>")
 # Where guests reach FotoHub about payments and takedown requests. Empty: pages point them
 # to the photographer instead.
 SUPPORT_EMAIL = env("SUPPORT_EMAIL", default="")

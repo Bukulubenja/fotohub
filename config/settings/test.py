@@ -31,9 +31,14 @@ REST_FRAMEWORK = {
         "archive": "1000/min",
         "payments": "1000/min",
         "checkout": "1000/min",
+        "feedback": "1000/min",
     },
 }
 
 # Never charge through a real provider from tests, whatever the developer's .env says.
 BILLING = {**BILLING, "PROVIDER": "fake", "FAKE_WEBHOOK_SECRET": "", "FAKE_AUTO_CONFIRM": False}
+# Tests exercise the multi-photographer features (sign-up, subscriptions) so they stay working
+# if turned back on; tests of the single-school setup switch them off themselves.
+BILLING["SUBSCRIPTIONS"] = True
+SIGNUP_OPEN = True
 FLUTTERWAVE = {"SECRET_KEY": "", "SECRET_HASH": "", "BASE_URL": "https://flutterwave.invalid/v3"}

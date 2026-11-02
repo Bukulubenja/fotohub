@@ -1,6 +1,6 @@
 """One fixed price per photo, in both currencies (shop pricing decision, 2026-10-21).
 
-USD 0.24 by card; a fixed shilling price for mobile money, set in SHOP["PRICE_UGX"] and
+USD 0.27 by card; a fixed shilling price for mobile money, set in SHOP["PRICE_UGX"] and
 updated by hand when the exchange rate moves.
 """
 

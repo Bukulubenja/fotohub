@@ -36,7 +36,7 @@ label, .label { font-weight: 600; font-size: var(--ui); }
   font: 650 clamp(17px, 5vw, 22px)/1 var(--sans); font-variant-numeric: tabular-nums; text-transform: uppercase;
   transition: border-color .15s, background-color .2s, color .2s, box-shadow .15s;
 }
-.box:focus, .code:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px rgba(121, 180, 37, .28); }
+.box:focus, .code:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px rgba(30, 107, 52, .25); }
 .box.filled { border-color: var(--leaf); }
 .dash { width: 8px; height: 2px; justify-self: center; border-radius: 2px; background: var(--muted); opacity: .5; transition: opacity .2s; }
 .keypad .label, .code { transition: opacity .2s; }
@@ -74,7 +74,7 @@ form.busy .checking-hides { opacity: 0; pointer-events: none; }
 {% block body %}
 <main class="center">
   <div class="card">
-    <div class="wordmark">{{ brand_name }}</div>
+    {% include "galleries/public/_wordmark.html" %}
     <div class="tagline">{{ brand_tagline }}</div>
     <h1>Find your photos</h1>
     <p class="muted">Enter the passkey your photographer or school shared. You only need to do this once on this phone.</p>
@@ -99,7 +99,7 @@ form.busy .checking-hides { opacity: 0; pointer-events: none; }
 
         <p class="error" id="passkey-error" role="alert"{% if not error %} hidden{% endif %}>{{ error }}</p>
         <div class="actions checking-hides">
-          <button class="btn" type="submit">Open photos</button>
+          <button class="btn cta" type="submit">Open photos</button>
           <button class="chip" type="button" id="paste" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="3" width="8" height="4" rx="1"/><path d="M16 5h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2"/></svg>Paste passkey</button>
         </div>
       </form>
@@ -117,7 +117,7 @@ form.busy .checking-hides { opacity: 0; pointer-events: none; }
     </section>
     {% endif %}
 
-    <p class="helper signin">Photographer? <a href="{% url 'dashboard' %}">Sign in to your dashboard</a></p>
+    <p class="helper signin">School staff? <a href="{% url 'dashboard' %}">Sign in to the dashboard</a></p>
   </div>
 </main>
 <script nonce="{{ csp_nonce }}">

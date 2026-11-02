@@ -48,9 +48,9 @@ def pay(client: Client, gallery: Gallery, **form):
 
 class TestPricing:
     def test_fixed_prices_in_both_currencies(self):
-        assert price("USD").total(10) == 240
-        assert format_money("USD", 240) == "$2.40"
-        assert format_money("UGX", price("UGX").total(10)) == "UGX 9,000"
+        assert price("USD").total(10) == 270
+        assert format_money("USD", 270) == "$2.70"
+        assert format_money("UGX", price("UGX").total(10)) == "UGX 10,000"
 
 
 class TestCart:
@@ -59,7 +59,7 @@ class TestCart:
 
         data = add(client, published, a, b).json()
 
-        assert data == {"count": 2, "totals": {"UGX": "UGX 1,800", "USD": "$0.48"}}
+        assert data == {"count": 2, "totals": {"UGX": "UGX 2,000", "USD": "$0.54"}}
 
     def test_folder_adds_and_sums_the_whole_gallery(self, client: Client, published):
         for _ in range(5):
@@ -69,7 +69,7 @@ class TestCart:
         data = client.post(url("shop-cart-add-all", published), **JSON).json()
 
         assert data["count"] == 5
-        assert data["totals"] == {"UGX": "UGX 4,500", "USD": "$1.20"}
+        assert data["totals"] == {"UGX": "UGX 5,000", "USD": "$1.35"}
 
     def test_photos_from_other_galleries_are_ignored(self, client: Client, published):
         foreign = ready_photo(GalleryFactory(status=Gallery.Status.PUBLISHED))
@@ -84,7 +84,7 @@ class TestCart:
         data = client.post(url("shop-cart-add-all", published), **JSON).json()
 
         assert data["count"] == 1
-        assert data["totals"]["UGX"] == "UGX 900"
+        assert data["totals"]["UGX"] == "UGX 1,000"
 
     def test_remove(self, client: Client, published):
         a, b = ready_photo(published), ready_photo(published)
@@ -103,7 +103,7 @@ class TestCart:
         assert response["Location"] == url("shop-cart", published)
         html = client.get(response["Location"]).content.decode()
         assert "1 photo from Amina &amp; Daniel" in html
-        assert "UGX 900" in html and "$0.24" in html
+        assert "UGX 1,000" in html and "$0.27" in html
 
     def test_locked_gallery_cart_is_closed(self, client: Client, published):
         published.set_access_password("secret-pass")
@@ -147,11 +147,11 @@ class TestCheckout:
         order = Order.objects.get()
         assert response.status_code == 303
         assert response["Location"] == reverse("shop-order", args=[order.token])
-        assert (order.currency, order.amount_minor, order.quantity) == ("UGX", 1800, 2)
+        assert (order.currency, order.amount_minor, order.quantity) == ("UGX", 2000, 2)
         assert order.phone == "256772123456"
         assert order.items.count() == 2
         assert (
-            "Approve UGX 1,800 on 256772123456" in client.get(response["Location"]).content.decode()
+            "Approve UGX 2,000 on 256772123456" in client.get(response["Location"]).content.decode()
         )
 
     def test_card_order_charges_usd_and_goes_to_the_card_page(self, client: Client, published):
@@ -160,7 +160,7 @@ class TestCheckout:
         response = pay(client, published, currency="USD", phone="")
 
         order = Order.objects.get()
-        assert (order.currency, order.unit_price_minor, order.amount_minor) == ("USD", 24, 72)
+        assert (order.currency, order.unit_price_minor, order.amount_minor) == ("USD", 27, 81)
         assert response.status_code == 302  # the fake provider's "card page" is the order page
         assert response["Location"].endswith(reverse("shop-order", args=[order.token]))
 
@@ -206,7 +206,7 @@ class TestPaymentOutcome:
     def test_success_marks_paid_and_emails_the_link_once(
         self, pending, django_capture_on_commit_callbacks
     ):
-        outcome = Outcome(pending.provider_reference, "succeeded", 1800, "UGX")
+        outcome = Outcome(pending.provider_reference, "succeeded", 2000, "UGX")
 
         with django_capture_on_commit_callbacks(execute=True):
             services.apply_outcome(outcome)
@@ -218,7 +218,7 @@ class TestPaymentOutcome:
         assert f"/orders/{pending.token}/" in mail.outbox[0].body
         assert mail.outbox[0].to == ["guest@example.com"]
 
-    @pytest.mark.parametrize(("amount", "currency"), [(900, "UGX"), (1800, "USD")])
+    @pytest.mark.parametrize(("amount", "currency"), [(1000, "UGX"), (2000, "USD")])
     def test_wrong_amount_or_currency_is_not_paid(self, pending, amount, currency):
         services.apply_outcome(Outcome(pending.provider_reference, "succeeded", amount, currency))
 
@@ -242,7 +242,7 @@ class TestPaymentOutcome:
                 {
                     "reference": pending.provider_reference,
                     "status": "succeeded",
-                    "amount_minor": 1800,
+                    "amount_minor": 2000,
                     "currency": "UGX",
                 }
             ),

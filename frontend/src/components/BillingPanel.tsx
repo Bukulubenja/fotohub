@@ -143,6 +143,7 @@ export function BillingPanel({
   }
 
   if (!sub) return error ? <p className="notice notice--error" role="alert">{error}</p> : null
+  if (!sub.enabled) return null
 
   const standing = standingMessage(sub)
   const chosen = plans.find((p) => p.code === plan)

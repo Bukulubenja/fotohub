@@ -12,7 +12,7 @@ from django.core.mail import send_mail
 from django.urls import reverse
 from django.utils import timezone
 
-from billing import lifecycle
+from billing import lifecycle, services
 from billing.models import Subscription
 
 logger = logging.getLogger(__name__)
@@ -62,6 +62,8 @@ def deliver(subscription: Subscription, subject: str, body: str) -> None:
 
 def send_reminders(now: datetime.datetime | None = None) -> int:
     """Send each subscription the reminder for its current stage, once. Returns how many."""
+    if not services.subscriptions_enabled():
+        return 0
     now = now or timezone.now()
     soon = now + datetime.timedelta(days=settings.BILLING["DUE_DAYS"])
     sent = 0

@@ -140,7 +140,7 @@ class TestGalleryPage:
 
         assert download_url(published, bought) in html
         assert download_url(published, other) not in html
-        assert "Buy all 1 photo · UGX 900" in html
+        assert "Buy all 1 photo · UGX 1,000" in html
 
 
 class TestUnavailable:

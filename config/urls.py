@@ -2,7 +2,9 @@ from django.conf import settings
 from django.contrib import admin
 from django.urls import include, path
 
+from feedback import views as feedback_views
 from galleries import collection_views, public_views, update_views
+from ops import pwa
 from ops import views as ops_views
 
 urlpatterns = [
@@ -23,6 +25,12 @@ urlpatterns = [
     path("api/v1/", include("assets.urls")),
     path("api/v1/", include("billing.urls")),
     path("terms/", public_views.terms_page, name="purchase-terms"),
+    path("feedback/", feedback_views.feedback_page, name="feedback"),
+    # The installable app. The worker lives at the root so its scope covers the whole site.
+    path("manifest.webmanifest", pwa.manifest, name="pwa-manifest"),
+    path("app/manifest.webmanifest", pwa.dashboard_manifest, name="pwa-dashboard-manifest"),
+    path("sw.js", pwa.service_worker, name="pwa-service-worker"),
+    path("offline/", pwa.offline, name="pwa-offline"),
     path("g/", include("galleries.public_urls")),
     path("g/", include("shop.gallery_urls")),
     path("orders/", include("shop.order_urls")),

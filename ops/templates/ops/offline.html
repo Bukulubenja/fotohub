@@ -1,0 +1,13 @@
+{% extends "galleries/public/base.html" %}
+{% block title %}Offline · {{ brand_name }}{% endblock %}
+{% block feedback_link %}{% endblock %}
+{% block body %}
+<main class="center">
+  <div class="card">
+    {% include "galleries/public/_wordmark.html" %}
+    <h1>You're offline</h1>
+    <p class="muted">Your photos need an internet connection. Check your data or Wi-Fi, then try again.</p>
+    <p><a class="btn" href="">Try again</a></p>
+  </div>
+</main>
+{% endblock %}

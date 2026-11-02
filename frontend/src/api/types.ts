@@ -129,6 +129,8 @@ export interface Subscription {
   can_upload: boolean
   galleries_live: boolean
   days_left: number
+  /** False when the school runs the system: there is no plan to show or renew. */
+  enabled: boolean
 }
 
 export type PaymentStatus = 'pending' | 'succeeded' | 'failed'

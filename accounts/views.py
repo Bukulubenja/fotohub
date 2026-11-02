@@ -1,7 +1,9 @@
+from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
 from rest_framework import generics, status
+from rest_framework.exceptions import NotFound
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -29,6 +31,8 @@ class RegisterView(APIView):
     throttle_scope = "auth"
 
     def post(self, request: Request) -> Response:
+        if not settings.SIGNUP_OPEN:
+            raise NotFound()  # one school runs the system; its account is made in the admin
         serializer = RegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()

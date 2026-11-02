@@ -237,7 +237,7 @@ class TestTrustCopy:
 
         html = client.get(url("shop-cart", published)).content.decode()
 
-        assert "1 photo · <strong>UGX 900</strong>" in html
+        assert "1 photo · <strong>UGX 1,000</strong>" in html
         assert f'href="{reverse("purchase-terms")}"' in html
         assert "Pay securely" in html
 
@@ -246,7 +246,7 @@ class TestTrustCopy:
 
         html = client.get(reverse("purchase-terms")).content.decode()
 
-        assert "UGX 900 by mobile money or $0.24 by card" in html
+        assert "UGX 1,000 by mobile money or $0.27 by card" in html
         assert "mailto:help@example.com" in html
 
     def test_pending_order_uses_the_blueprint_wording(self, client: Client, published):

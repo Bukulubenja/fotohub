@@ -1,7 +1,8 @@
 /* Fonts from the product spec (§7), self-hosted (SIL OFL, see fonts/OFL.txt); Vite bundles and
-   hashes them. Inter with its optical-size axis is the UI face; Alumni Sans Inline One is
-   display-only (the wordmark), never body text or controls. Browsers fetch a face only once
-   text on the page uses it, so the italic costs nothing until the tagline renders. */
+   hashes them. Inter with its optical-size axis is the reading face; Outfit, a free geometric
+   face in the spirit of Cocogoose (whose licence rules out a commercial site), sets the
+   wordmark, headings and buttons. Browsers fetch a face only once text on the page uses it, so
+   the italic costs nothing until the tagline renders. */
 @font-face {
   font-family: 'Inter';
   font-style: normal;
@@ -19,36 +20,37 @@
 }
 
 @font-face {
-  font-family: 'Alumni Sans Inline One';
+  font-family: 'Outfit';
   font-style: normal;
-  font-weight: 400;
+  font-weight: 100 900;
   font-display: swap;
-  src: url('./fonts/alumni-sans-inline-one-latin-400-normal.woff2') format('woff2');
+  src: url('./fonts/outfit-latin-wght-normal.woff2') format('woff2');
 }
 
-/* Leaf palette, the same as the guest pages (galleries/.../base.html): forest and deep green
-   carry text and buttons; lime, leaf and sky only tint, because they're too light for text.
-   Canvas, text, muted and border are the spec's neutrals (§7); muted on canvas is ~5:1. */
+/* School palette, the same as the guest pages (galleries/.../base.html): the school's green
+   #1e6b34 carries buttons and links (white on it ~6.5:1), charcoal #222 the text, #555 the
+   secondary text (~7:1 on the background). */
 :root {
-  --bg: #f7f9f4;
+  --bg: #f9f9f9;
   --surface: #ffffff;
-  --text: #172417;
-  --muted: #5f6e60;
-  --border: #dce6d7;
-  --accent: #1d6517;
+  --text: #222222;
+  --muted: #555555;
+  --border: #e3e3e3;
+  --accent: #1e6b34;
   --accent-text: #ffffff;
-  --lime-wash: #eef6dc;
+  --lime-wash: #eaf4ed;
   --error: #b42318;
   --error-bg: #fdecea;
   --warn: #6b4a00;
   --warn-bg: #fff4d6;
-  --ok: #1d6517;
-  /* Type scale: page title 36px, section 20px, buttons and menus 15px, body 16px, meta 13px. */
+  --ok: #1e6b34;
+  /* Type scale, readable on small screens: page title 36px, section 22px, buttons and menus
+     16px, body 16px, meta 14px. */
   --fs-title: 2.25rem;
-  --fs-section: 1.25rem;
-  --fs-ui: 0.9375rem;
-  --fs-small: 0.8125rem;
-  --display: 'Alumni Sans Inline One', 'Inter', system-ui, sans-serif;
+  --fs-section: 1.375rem;
+  --fs-ui: 1rem;
+  --fs-small: 0.875rem;
+  --display: 'Outfit', 'Inter', system-ui, sans-serif;
   --radius: 12px;
   --gap: 16px;
   color-scheme: light;
@@ -60,19 +62,19 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #04160a;
-    --surface: #0b2610;
-    --text: #e6f2dc;
-    --muted: #a3b89c;
-    --border: #1d4a1c;
-    --accent: #79b425;
-    --accent-text: #054204;
-    --lime-wash: #10331a;
+    --bg: #0d1a12;
+    --surface: #142619;
+    --text: #eef3ef;
+    --muted: #a7b8ac;
+    --border: #24402c;
+    --accent: #57b874;
+    --accent-text: #0b1f12;
+    --lime-wash: #173322;
     --error: #f2b8b5;
     --error-bg: #3a1d1b;
     --warn: #f5b942;
     --warn-bg: #3a2b12;
-    --ok: #79b425;
+    --ok: #57b874;
     color-scheme: dark;
   }
 }
@@ -87,11 +89,16 @@ body {
   background: var(--bg);
 }
 
+h1,
+h2 {
+  font-family: var(--display);
+}
+
 h1 {
   margin: 0 0 4px;
   font-size: var(--fs-title);
-  line-height: 1.1;
-  letter-spacing: -0.02em;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
 }
 
 a {
@@ -116,6 +123,7 @@ a {
 
 .button {
   font: inherit;
+  font-family: var(--display);
   font-size: var(--fs-ui);
   font-weight: 600;
   padding: 10px 18px;
@@ -205,18 +213,25 @@ progress {
   line-height: 1.15;
 }
 
-/* The inline display face needs size to stay legible, hence 2rem rather than the UI size. */
 .brand strong,
 .wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   color: var(--accent);
-  font: 400 2rem/1 var(--display);
-  letter-spacing: 0.04em;
+  font: 700 1.625rem/1.1 var(--display);
+  letter-spacing: 0.02em;
+}
+
+.brand strong img,
+.wordmark img {
+  flex: none;
 }
 
 /* Sign-in shows the wordmark alone, at the guest pages' size, tight to its tagline. */
 .wordmark {
   margin: 0 0 4px;
-  font-size: 2.5rem;
+  font-size: 2rem;
 }
 
 .brand__tagline {

@@ -15,13 +15,14 @@
 .row strong { display: block; }
 .row small { color: var(--muted); font-size: var(--small); }
 .status { font-size: var(--tiny); font-weight: 600; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
-.status.paid { background: rgba(121, 180, 37, .18); color: var(--success-text); }
+.status.paid { background: rgba(30, 107, 52, .14); color: var(--success-text); }
 .status.pending { background: rgba(85, 166, 195, .2); color: var(--text); }
 .status.failed { background: rgba(180, 35, 24, .12); color: var(--danger); }
 .contact { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 {% endblock %}
 {% block body %}
 <main class="page">
+  <a class="back" href="{% url 'public-gallery-page' gallery.public_token %}">{% include "galleries/public/_back_icon.html" %}Back to the photos</a>
   <div class="eyebrow">{{ event.title }}</div>
   <h1>Profile</h1>
   <p class="muted">You don't need an account. Your cart, favourites and purchases are kept on this phone or computer. Your order links, also sent by email, open your photos anywhere.</p>

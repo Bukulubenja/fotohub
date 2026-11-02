@@ -9,6 +9,7 @@
 {% endblock %}
 {% block body %}
 <main class="wrap">
+  <a class="back" href="{% url 'public-gallery-page' gallery.public_token %}">{% include "galleries/public/_back_icon.html" %}Back to the photos</a>
   <div class="page-head">
     <div class="eyebrow">{{ event.title }}</div>
     <h1>Favourites</h1>

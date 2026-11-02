@@ -72,7 +72,13 @@ def subscription_for(user) -> Subscription:
         return start_trial(user)
 
 
+def subscriptions_enabled() -> bool:
+    return settings.BILLING["SUBSCRIPTIONS"]
+
+
 def standing_for(user, now=None) -> lifecycle.Standing:
+    if not subscriptions_enabled():
+        return lifecycle.ALWAYS_ACTIVE  # one school runs the system: nothing pauses or expires
     return lifecycle.standing(subscription_for(user).paid_until, now or timezone.now())
 
 
@@ -82,6 +88,8 @@ def can_upload(user) -> bool:
 
 def start_payment(user, plan: Plan, periods: int, phone: str) -> tuple[Payment, object]:
     """Create the payment and ask the provider to collect it. Returns (payment, checkout)."""
+    if not subscriptions_enabled():
+        raise PaymentRejected("There's no plan to pay for: this system is run by the school.")
     if not 1 <= periods <= MAX_PERIODS:
         raise PaymentRejected(f"Pay for between 1 and {MAX_PERIODS} periods at a time.")
     if not plan.is_public:

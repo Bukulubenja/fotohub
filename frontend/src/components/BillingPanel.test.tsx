@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { Mock } from 'vitest'
 import type { BillingApi } from '../api/endpoints'
@@ -21,6 +21,7 @@ function subscription(overrides: Partial<Subscription> = {}): Subscription {
     can_upload: true,
     galleries_live: true,
     days_left: 13,
+    enabled: true,
     ...overrides,
   }
 }
@@ -52,6 +53,16 @@ function fakeApi(sub: Subscription, outcomes: Payment[] = []): FakeBillingApi {
     }),
   }
 }
+
+test('shows nothing when the school runs the system without plans', async () => {
+  const api = fakeApi(subscription({ enabled: false }))
+  const { container } = render(<BillingPanel api={api} />)
+
+  await waitFor(() => expect(api.subscription).toHaveBeenCalled())
+  expect(screen.queryByText(/Free trial/)).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Choose a plan' })).not.toBeInTheDocument()
+  expect(container).toBeEmptyDOMElement()
+})
 
 test('trial shows the days left and offers a plan', async () => {
   render(<BillingPanel api={fakeApi(subscription())} />)

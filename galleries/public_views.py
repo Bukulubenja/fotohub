@@ -28,7 +28,7 @@ from rest_framework.throttling import BaseThrottle, ScopedRateThrottle
 from assets.gallery_media import cover_image, download_url, gallery_photos, ready_photos
 from assets.models import Photo
 from billing import services as billing
-from galleries import access, favourites, sharing, stats
+from galleries import access, collections, favourites, sharing, stats
 from galleries.models import Gallery
 from galleries.throttling import GalleryPasswordMisses
 from galleries.views import NOINDEX
@@ -123,6 +123,12 @@ def base_context(request: HttpRequest, visit: Visit) -> dict:
         "is_preview": visit.is_preview,
         "is_expired": gallery.is_expired(),
         "share_url": sharing.share_url(request, gallery),
+        # "All events" back link, when this phone reached the gallery through its collection.
+        "collection_url": (
+            reverse("public-collection", args=[gallery.event.collection_id])
+            if collections.opens_gallery(request, gallery)
+            else ""
+        ),
     }
 
 

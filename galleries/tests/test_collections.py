@@ -487,3 +487,40 @@ def test_collection_factory_builds_a_usable_collection():
     collection = CollectionFactory()
 
     assert collections.find_by_passkey(collection.passkey) == collection
+
+
+class TestBackToAllEvents:
+    """The school's review: a parent who opens one event needs a way back to the others."""
+
+    def test_gallery_links_back_to_the_collection(self, client: Client, school):
+        gallery = published_in(school)
+        enter(client, school.passkey)
+
+        html = client.get(gallery_url(gallery)).content.decode()
+
+        assert f'href="{hub_url(school)}"' in html
+        assert "All events" in html
+
+    def test_no_back_link_without_the_passkey(self, client: Client, school):
+        gallery = published_in(school)
+
+        assert "All events" not in client.get(gallery_url(gallery)).content.decode()
+
+    def test_no_back_link_for_events_kept_separate(self, client: Client, school):
+        gallery = published_in(school, password=PASSWORD, separate_access=True)
+        enter(client, school.passkey)
+        client.post(
+            reverse("public-gallery-page-unlock", args=[gallery.public_token]),
+            {"password": PASSWORD},
+        )
+
+        assert "All events" not in client.get(gallery_url(gallery)).content.decode()
+
+    @pytest.mark.parametrize("page", ["public-gallery-favourites", "public-gallery-profile"])
+    def test_inner_pages_link_back_to_the_photos(self, client: Client, school, page):
+        gallery = published_in(school)
+
+        html = client.get(reverse(page, args=[gallery.public_token])).content.decode()
+
+        assert f'href="{gallery_url(gallery)}"' in html
+        assert "Back to the photos" in html

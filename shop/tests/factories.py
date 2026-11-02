@@ -13,7 +13,7 @@ def make_order(
     *,
     status: str = Order.Status.PAID,
     currency: str = "UGX",
-    unit: int = 900,
+    unit: int = 1000,
     client: Client | None = None,
 ) -> Order:
     """An order for `photos`; with `client`, that browser session owns it."""

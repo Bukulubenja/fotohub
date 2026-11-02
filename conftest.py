@@ -24,6 +24,7 @@ def strict_throttle(monkeypatch):
             "archive": "2/min",
             "payments": "2/min",
             "checkout": "2/min",
+            "feedback": "2/min",
         },
     )
     cache.clear()

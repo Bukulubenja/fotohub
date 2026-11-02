@@ -2,7 +2,6 @@ import logging
 
 from django.conf import settings
 from django.http import HttpRequest, HttpResponse
-from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from rest_framework import generics, mixins, status, viewsets
@@ -10,7 +9,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from billing import lifecycle, services
+from billing import services
 from billing.models import Payment, Plan
 from billing.providers import get_provider
 from billing.providers.base import WebhookRejected
@@ -35,7 +34,7 @@ class PlanListView(generics.ListAPIView):
 class SubscriptionView(APIView):
     def get(self, request: Request) -> Response:
         subscription = services.subscription_for(request.user)
-        context = {"standing": lifecycle.standing(subscription.paid_until, timezone.now())}
+        context = {"standing": services.standing_for(request.user)}
         return Response(SubscriptionSerializer(subscription, context=context).data)
 
 

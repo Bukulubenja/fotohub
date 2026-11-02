@@ -25,7 +25,7 @@ label.field input { min-height: 48px; padding: 0 14px; border: 1px solid var(--l
 {% endblock %}
 {% block body %}
 <main class="page">
-  <a href="{% url 'public-gallery-page' gallery.public_token %}">← Back to the gallery</a>
+  <a class="back" href="{% url 'public-gallery-page' gallery.public_token %}">{% include "galleries/public/_back_icon.html" %}Back to the photos</a>
   <h1>Your cart</h1>
   {% if items %}
     <p class="muted">{{ quantity }} photo{{ quantity|pluralize }} from {{ event.title }}. Each is the full, original file: {{ unit.UGX }} or {{ unit.USD }}.</p>
@@ -56,7 +56,7 @@ label.field input { min-height: 48px; padding: 0 14px; border: 1px solid var(--l
         <input name="email" type="email" autocomplete="email" required value="{{ form.email|default:'' }}">
       </label>
       {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
-      <button class="btn pay" type="submit">Pay securely</button>
+      <button class="btn cta pay" type="submit">Pay securely</button>
       <p class="helper terms">Your photos unlock as soon as the payment is confirmed. <a href="{% url 'purchase-terms' %}">Terms and refunds</a>{% if support_email %} · <a href="mailto:{{ support_email }}">Help with a payment</a>{% endif %}</p>
     </form>
   {% else %}

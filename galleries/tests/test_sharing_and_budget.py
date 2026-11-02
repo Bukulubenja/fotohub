@@ -124,14 +124,14 @@ class TestDataBudget:
         assert "fonts.googleapis" not in html and "fonts.gstatic" not in html
 
     def test_web_fonts_are_ours_and_small(self, client: Client, full_page):
-        """Inter (UI) and Alumni Sans Inline One (wordmark only) are the only extra downloads:
+        """Inter (reading) and Outfit (wordmark, headings, buttons) are the only extra downloads:
         self-hosted, cached after the first visit, and small enough to keep the first screen
         far under 1 MB (plan §3.3)."""
         html = page(client, full_page).content.decode()
 
         fonts = [
             "galleries/fonts/inter-latin-wght-normal.woff2",
-            "galleries/fonts/alumni-sans-inline-one-latin-400-normal.woff2",
+            "galleries/fonts/outfit-latin-wght-normal.woff2",
         ]
         sources = re.findall(r'url\("([^"]+)"\)', html)
         assert sources == [static(font) for font in fonts]

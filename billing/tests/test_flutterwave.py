@@ -172,7 +172,7 @@ class TestEndToEnd:
         # Flutterwave confirms by webhook; we re-verify and credit.
         fw.transactions[order.provider_reference] = {
             "status": "successful",
-            "amount": 1800,
+            "amount": 2000,
             "currency": "UGX",
         }
         hook = client.post(
@@ -216,7 +216,7 @@ class TestEndToEnd:
         order = Order.objects.get()
         fw.transactions[order.provider_reference] = {
             "status": "successful",
-            "amount": 0.24,
+            "amount": 0.27,
             "currency": "USD",
         }
 

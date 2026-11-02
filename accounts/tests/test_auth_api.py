@@ -13,6 +13,16 @@ REGISTER_PAYLOAD = {
 }
 
 
+def test_sign_up_is_closed_when_one_school_runs_the_system(api_client, settings):
+    """The school's account is made in the admin; strangers can't create photographer accounts."""
+    settings.SIGNUP_OPEN = False
+
+    response = api_client.post(reverse("auth-register"), REGISTER_PAYLOAD, format="json")
+
+    assert response.status_code == 404
+    assert not User.objects.exists()
+
+
 class TestRegister:
     def test_creates_user_with_profile_and_logs_in(self, api_client):
         response = api_client.post(reverse("auth-register"), REGISTER_PAYLOAD, format="json")

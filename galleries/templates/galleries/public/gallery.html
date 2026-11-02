@@ -10,7 +10,7 @@
 <meta property="og:image:width" content="{{ share_cover.width }}">
 <meta property="og:image:height" content="{{ share_cover.height }}">
 <meta name="twitter:card" content="summary_large_image">{% endif %}
-<meta name="theme-color" content="#04160a">
+<meta name="theme-color" content="#0f2e19">
 {% endblock %}
 {% block body_class %} class="has-nav"{% endblock %}
 {% block style %}
@@ -40,7 +40,7 @@
 @media (prefers-reduced-motion: reduce) { .mosaic-track { animation: none; } }
 .intro::after {
   content: ""; position: absolute; z-index: -1; inset: 0; pointer-events: none;
-  background: linear-gradient(180deg, rgba(4, 22, 10, .1) 0%, rgba(4, 22, 10, .3) 35%, rgba(4, 22, 10, .94) 64%, #04160a 78%);
+  background: linear-gradient(180deg, rgba(15, 46, 25, .1) 0%, rgba(15, 46, 25, .3) 35%, rgba(15, 46, 25, .94) 64%, #0f2e19 78%);
 }
 .intro-text { padding: 0 24px calc(112px + env(safe-area-inset-bottom)); }
 .intro .eyebrow { color: var(--lime); }
@@ -48,7 +48,7 @@
 .intro-meta { color: var(--night-muted); margin: 0 0 28px; }
 .intro-go {
   display: inline-grid; place-items: center; width: 56px; height: 56px; border-radius: 16px;
-  color: var(--accent-ink); background: var(--accent); box-shadow: 0 8px 24px rgba(29, 101, 23, .35);
+  color: var(--accent-ink); background: var(--accent); box-shadow: 0 8px 24px rgba(30, 107, 52, .35);
   transition: background-color .2s, transform .2s;
 }
 @media (hover: hover) { .intro-go:hover { filter: brightness(1.12); } }
@@ -86,6 +86,7 @@
   </div>
   {% endif %}
   <div class="intro-text">
+    {% if collection_url %}<a class="back back--night" href="{{ collection_url }}">{% include "galleries/public/_back_icon.html" %}All events</a>{% endif %}
     <div class="eyebrow">{{ profile.display_name }}</div>
     <h1>{{ event.title }}</h1>
     <p class="intro-meta">{{ event.event_date|date:"j F Y" }}{% if event.location_label %} · {{ event.location_label }}{% endif %}</p>
@@ -102,7 +103,7 @@
     {% if event.description %}<p class="muted">{{ event.description|linebreaksbr }}</p>{% endif %}
     {% if unsold_count %}
     <form method="post" action="{% url 'shop-cart-add-all' gallery.public_token %}">
-      <button class="btn" type="submit">Buy all {{ unsold_count }} photo{{ unsold_count|pluralize }} · {{ unsold_total }}</button>
+      <button class="btn cta" type="submit">Buy all {{ unsold_count }} photo{{ unsold_count|pluralize }} · {{ unsold_total }}</button>
     </form>
     <p class="note muted">Full-quality originals, {{ unit_price }} each (or {{ unsold_total_usd }} by card).</p>
     {% endif %}
